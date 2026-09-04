@@ -1,0 +1,126 @@
+<template id="not-slotted">
+	<slot>未插入内容</slot>
+<style>
+:host{
+	width: 100%; height: 100%;
+	text-align: center;
+	color: #666;
+}
+</style>
+</template>
+
+<template id="agent-default">
+	<img src="../resource/avatar.jpg" alt="头像">
+	<div id="detail"></div>
+<style>
+	:host{
+		display: inline;
+	}
+	img{
+		width: 100%;
+	}
+</style>
+</template>
+
+<template id="group-default">
+	<section id="chat">
+		<div class="message">
+			<agent-default class="message-sender"></agent-default>
+			<div class="message-content">这里是消息内容</div>
+		</div>
+	</section>
+	<section id="member">
+		<button id="btn-new">添加成员</button>
+		<div class="member">
+			<agent-default class="member-avatar"></agent-default>
+			<span class="member-name"></span>
+		</div>
+		<dialog id="member-new"><form method="dialog">
+			<label>agent_type <input type="text" name="agent_type"></label>
+			<label>system_prompt <input type="text" name="system_prompt"></label>
+			<div id="action">
+				<button value="Y" type="submit">创建</button>
+				<button value="N">取消</button>
+			</div>
+		</form></dialog>
+	</section>
+<style>
+	:host{
+		display: flex;
+	}
+	dialog{
+		margin: auto;
+	}
+	#member{
+		flex-basis: 20%;
+		flex-grow: 0;
+	}
+	#chat{
+		text-align: center;
+		flex-basis: 80%;
+		flex-grow: 1;
+	}
+	.message{
+		position: relative;
+		display: inline-block;
+		width: 70%;
+		min-height: 50px;
+
+		padding: 5px;
+		margin: 5px 0;
+		border-radius: 5px;
+		box-shadow: var(--box-shadow-middle);
+	}
+	.message-sender{
+		position: absolute;
+		top: 0px;
+		right: 102%;
+		height: 100%;
+		aspect-ratio: 1;
+		max-height: 50px;
+	}
+	.message-sender.selected{
+		left: 102%;
+	}
+	.message-content{
+		text-align: left;
+	}
+
+	.member{
+		border: 1px solid #000000;
+		padding: 5px;
+		height: 50px;
+	}
+	.member-avatar{
+		display: inline-block;
+		aspect-ratio: 1;
+		height: 100%;
+	}
+</style>
+</template>
+
+<template id="box-chat">
+	<form>
+		<textarea name="content"></textarea>
+		<input name="file" type="file">
+		<input type="submit" value="发送">
+	</form>
+<style>
+	textarea{
+		width: 100%;
+		resize: none;
+	}
+</style>
+</template>
+
+<template id="app-main">
+	<group-default></group-default>
+	<box-chat></box-chat>
+<style>
+	box-chat{
+		position: fixed;
+		bottom: 50px;
+		left: 20%; right: 20%;
+	}
+</style>
+</template>
