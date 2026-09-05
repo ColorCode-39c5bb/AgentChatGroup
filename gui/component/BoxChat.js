@@ -1,6 +1,6 @@
 import templatePromise from "../template.js";
 templatePromise.then((templateDocument)=>{
-	BoxChat.template = templateDocument.getElementById("box-chat");
+	BoxChat.prototype.template = templateDocument.getElementById("box-chat");
 	window.constructor_withTemplate.push(BoxChat);
 });
 export default function BoxChat(){
@@ -13,7 +13,6 @@ export default function BoxChat(){
 		e.preventDefault();
 		_this.dispatchEvent(new CustomEvent("message-send", {
 			bubbles: true,
-			composed: true,
 			detail: new FormData(this),
 		}));
 	});

@@ -23,39 +23,46 @@
 </template>
 
 <template id="group-default">
-	<section id="chat">
+	<section id="list-message">
 		<div class="message">
 			<agent-default class="message-sender"></agent-default>
 			<div class="message-content">这里是消息内容</div>
 		</div>
 	</section>
-	<section id="member">
-		<button id="btn-new">添加成员</button>
-		<div class="member">
-			<agent-default class="member-avatar"></agent-default>
-			<span class="member-name"></span>
-		</div>
+	<section id="list-member">
 		<dialog id="member-new"><form method="dialog">
-			<label>agent_type <input type="text" name="agent_type"></label>
-			<label>system_prompt <input type="text" name="system_prompt"></label>
+			<label>name <input type="text" name="name"></label>
+			<label>system_message <input type="text" name="system_message"></label>
 			<div id="action">
 				<button value="Y" type="submit">创建</button>
 				<button value="N">取消</button>
 			</div>
 		</form></dialog>
+		<button id="btn-new">添加成员</button>
+		<div class="member">
+			<agent-default class="member-avatar"></agent-default>
+			<span class="member-name"></span>
+		</div>
 	</section>
+	<box-chat></box-chat>
 <style>
 	:host{
 		display: flex;
 	}
+	box-chat{
+		position: fixed;
+		bottom: 50px;
+		left: 20%; right: 20%;
+		box-shadow: var(--box-shadow-middle);
+	}
 	dialog{
 		margin: auto;
 	}
-	#member{
+	#list-member{
 		flex-basis: 20%;
 		flex-grow: 0;
 	}
-	#chat{
+	#list-message{
 		text-align: center;
 		flex-basis: 80%;
 		flex-grow: 1;
@@ -79,7 +86,7 @@
 		aspect-ratio: 1;
 		max-height: 50px;
 	}
-	.message-sender.selected{
+	.message-sender.sender-user{
 		left: 102%;
 	}
 	.message-content{
@@ -114,13 +121,31 @@
 </template>
 
 <template id="app-main">
-	<group-default></group-default>
-	<box-chat></box-chat>
+	<section id="list-group">
+		<dialog id="group-new"><form method="dialog">
+			<label>name <input type="text" name="name"></label>
+			<label>max_member <input type="text" name="max_member"></label>
+			<div id="action">
+				<button value="Y" type="submit">创建</button>
+				<button value="N">取消</button>
+			</div>
+		</form></dialog>
+		<button id="btn-new">添加群聊</button>
+		<div class="group">
+			<div class="group-avatar"></div>
+			<span class="group-name"></span>
+		</div>
+	</section>
+	<group-default id="el-group"></group-default>
 <style>
-	box-chat{
-		position: fixed;
-		bottom: 50px;
-		left: 20%; right: 20%;
+	:host{
+		display: flex;
+	}
+	group-default{
+		flex-basis: 80%;
+	}
+	#list-group{
+		flex-basis: 20%;
 	}
 </style>
 </template>

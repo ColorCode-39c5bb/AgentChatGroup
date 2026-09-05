@@ -1,4 +1,5 @@
 from types import FunctionType
+from urllib import parse
 from python_multipart.multipart import Field, FormParser
 
 path_handler = {};
@@ -38,9 +39,15 @@ def path(path:str):
 				on_file=None,
 				boundary=boundary,
 			);
-			parser_form.write((await receive())["body"]);
+			more_body = True;
+			while more_body:
+				recv = await receive();
+				parser_form.write(receive["body"]);
+				more_body = recv["more_body"];
 			parser_form.finalize();
 			fields = map(lambda field: (field.field_name.decode(), field.value.decode()), fields);
+
+			if scope["query_string"]: scope["query"] = parse.parse_qs(scope["query_string"]);
 			return await on_path(scope, dict(fields), send);
 		path_handler[path] = on_path_wraped;
 		return on_path_wraped;

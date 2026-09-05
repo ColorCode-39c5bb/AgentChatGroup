@@ -1,6 +1,6 @@
 import templatePromise from "../template.js";
 templatePromise.then((templateDocument)=>{
-	AgentDefault.template = templateDocument.getElementById("agent-default");
+	AgentDefault.prototype.template = templateDocument.getElementById("agent-default");
 	window.constructor_withTemplate.push(AgentDefault);
 });
 export default function AgentDefault(){

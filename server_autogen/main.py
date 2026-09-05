@@ -1,16 +1,12 @@
-from email import message
-
 import uvicorn
 import json
 
-from server_autogen.agent.Group import Group
-from server_autogen.server.app import path, app
+from autogen_agentchat.base import TaskResult
 
+from agent.Group import Group
+from server.app import path, app
 
 # runtime = SingleThreadedAgentRuntime();
-group = Group("Group0");
-
-
 @path("/")
 async def on_home(scope, receive, send):
 	await send({
@@ -25,23 +21,35 @@ async def on_home(scope, receive, send):
 		"body": b"Hello, world!",
 	});
 
+groups: dict[str, Group] = {};
 @path("/api")
 async def on_api(scope, receive, send):
 	print(receive);
-	group.add_participant(None);
+	match(scope["query"]["action"]):
+		case "new_group":
+			groups[receive["name"]] = Group(receive["name"]);
+		case "new_participant":
+			groups["group"].add_participant(receive);
 
 	await send({
 		"type": "http.response.body",
-		"body": None,
+		"body": b"created successfully!",
 	});
 
 @path("/message")
 async def on_chat(scope, receive, send):
 	print(receive);
-	ms = (await group(receive["content"])).messages;
+	async for m_e in group(receive["content"]):
+		if isinstance(m_e, TaskResult): break;
+		await send({
+			"type": "http.response.body",
+			"body": (json.dumps(m_e.dump())+"\n").encode(),
+			"more_body": True
+		});
 	await send({
 		"type": "http.response.body",
-		"body": json.dumps(list(map(lambda cm:cm.dump(), ms))).encode()
+		"body": b"",
+		"more_body": False
 	});
 
 
