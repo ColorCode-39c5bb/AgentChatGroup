@@ -17,7 +17,7 @@ export default function GroupDefault(){
 	dialog_member_new.addEventListener("close", function(){
 		if(this.returnValue == "N") return;
 		const agent = new FormData(this.firstElementChild);
-		fetch("http://localhost:5000/member", {
+		fetch("http://localhost:5000/member?group="+_this.reactivedata.name, {
 			method: "POST",
 			body: agent
 		})
@@ -31,7 +31,7 @@ export default function GroupDefault(){
 	});
 	_this.addEventListener("message-send", function(e){
 		// e.detail.append("group", this.);
-		fetch("http://localhost:5000/message", {
+		fetch("http://localhost:5000/message?group="+this.reactivedata.name, {
 			method: "POST",
 			body: e.detail
 		})
@@ -85,12 +85,12 @@ GroupDefault.prototype.reactiverender = function(rd_delta){
 		.then(group=>this.reactiverender(group));
 		return;
 	}
-	if(rd_delta.members) el_member.reactiverender_for(rd_this.members, 
+	if(rd_delta.members) el_member.reactiverender_for(rd_this.members,
 		function(rd_member){
 			this.lastElementChild.innerHTML = rd_member.name;
 		},
 	);
-	if(rd_delta.messages) el_message.reactiverender_for(rd_this.messages, 
+	if(rd_delta.messages) el_message.reactiverender_for(rd_this.messages,
 		function(rd_message){
 			if(rd_message.source == "user") this.firstElementChild.classList.add("sender-user");
 			else this.firstElementChild.classList.remove("sender-user");
@@ -100,11 +100,19 @@ GroupDefault.prototype.reactiverender = function(rd_delta){
 }
 
 GroupDefault.prototype.RDCLASS = function(rd_raw){
-	
+	this.name = null;
+	this.messages = [];
+	this.members = [];
+	this.manager_state = {
+		type: "RoundRobinManagerState",
+		version: "1.0.0",
+		message_thread: [],
+		current_turn: 0,
+		next_speaker_index: 0,
+	}
 }
-GroupDefault.RDCLASS.prototype.merge = function(Ns_rd_delta){
-	if(Ns_rd_delta.length<2) this.rd_torender.push(undefined);
-	const rd = this.rd_torender.reduce(function(prev, cur){
+GroupDefault.prototype.RDCLASS.prototype.merge = function(Ns_rd_delta){
+	const rd = Ns_rd_delta.reduce(function(prev, cur){
 		if(!prev) return cur; if(!cur) return prev;
 		if(!prev.members) prev.members = cur.members
 		else prev.members.push(...cur.members || []);
@@ -112,17 +120,15 @@ GroupDefault.RDCLASS.prototype.merge = function(Ns_rd_delta){
 		else prev.messages.push(...cur.messages || []);
 		return prev;
 	});
-	this.reactivedata ??= {
-		members: [],
-		messages: [],
-	};
+	if(!rd) return rd;
 	this.members.push(...rd.members || []);
 	this.messages.push(...rd.messages || []);
 	const rd_temp = {
 		members: rd.members,
 		messages: rd.messages,
+		// name: rd.name==this.name ? undefined : rd.name,
 	};
 	delete rd.members; delete rd.messages;
-	Object.assign(this.reactivedata, rd);
+	Object.assign(this, rd);
 	return Object.assign(rd, rd_temp);
 };

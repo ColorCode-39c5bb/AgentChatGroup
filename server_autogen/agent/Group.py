@@ -1,4 +1,5 @@
-from typing import AsyncGenerator
+from types import CoroutineType
+from typing import AsyncGenerator, Mapping, Any
 
 from autogen_agentchat.agents import AssistantAgent, BaseChatAgent, UserProxyAgent
 from autogen_agentchat.base import TerminationCondition, TaskResult
@@ -9,6 +10,8 @@ from autogen_core.memory import Memory, ListMemory, MemoryContent
 from autogen_core.models import ModelFamily
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from collections.abc import Sequence
+
+from openai.types.admin.organization import group
 
 from .ChatAgentNameMessageToResponse import ChatAgentNameMessageToResponse
 
@@ -25,38 +28,43 @@ llm = OpenAIChatCompletionClient(
 	},
 );
 
-class Group:
+class Group():
 	def __init__(this,
 		name:str,
 	*,	termination_condition: TerminationCondition | None = TextMentionTermination("结束"),
 		max_turns: int | None = None,
 	):
 		this.name = name;
-		this.participants:list[BaseChatAgent] = [UserProxyAgent("user")];
-		this.chat_history: Memory = ListMemory(name);
+		this.members:list[BaseChatAgent] = [UserProxyAgent("user"), AssistantAgent("a", llm)];
+		this.messages = ListMemory(name);
 		this.termination_condition = termination_condition;
-		this.groupchat: BaseGroupChat|None = None;
+		this.groupchat = RoundRobinGroupChat(this.members);
 
-	def __call__(this,
+	async def __call__(this,
 		message: str | BaseChatMessage | Sequence[BaseChatMessage],
 	) -> AsyncGenerator[BaseAgentEvent | BaseChatMessage | TaskResult, None]:
-		# SelectorGroupChat(this.participants, llm).run(task=message);\
-		if this.groupchat is None: this.groupchat = RoundRobinGroupChat(
-			this.participants,
-			name=this.name,
-			termination_condition=this.termination_condition,
-		);
-		result = this.groupchat.run_stream(task=message);
-		# print(result);
-		# for cm in result.messages:
-		# 	await this.chat_history.add(MemoryContent(content=cm.to_text(), mime_type="text/plain"));
-		return result;
+		g = this.groupchat.run_stream(task=message);
+		async for m_e in g:
+			print(m_e);
+			await this.messages.add(MemoryContent(content=m_e.dump(), mime_type="text/plain"));
+			yield m_e;
+		return;
 
-	def add_participant(this, state):
-		user = this.participants[-1];
-		this.participants[-1] = ChatAgentNameMessageToResponse(
-			state["name"], llm,
-			model_client_stream=True,
+	async def save_state(this):
+		state = await this.groupchat.save_state();
+		state = {
+			"name": this.name,
+			"members": list(map(lambda m: {"name": m.name}, this.members)),
+			"messages": this.messages.content,
+			"manager_state": state["agent_states"]["RoundRobinGroupChatManager"],
+		}
+		return state;
+
+	def add_member(this, agent):
+		user = this.members[-1];
+		this.members[-1] = ChatAgentNameMessageToResponse(
+			agent["name"], llm,
+			# model_client_stream=True,
 			system_message = """
 系统说明：
 你是一个在群聊里的AI智能体，群聊成员由你和其他用户组成。
@@ -67,11 +75,15 @@ class Group:
 	"@locy,@jil,你们今天心情怎么样？"。
 这是额外的自定义系统提示词：
 """
-+f"这是你的name：{state['name']}。"
-+state["system_message"]
+ + f"这是你的name：{agent['name']}。"
+ + agent["system_message"]
 		);
-		this.participants.append(user);
-		this.groupchat = None;
+		this.members.append(user);
+		this.groupchat = RoundRobinGroupChat(
+			this.members,
+			name=this.name,
+			termination_condition=this.termination_condition,
+		);
 
 
 __all__ = [

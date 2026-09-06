@@ -8,6 +8,7 @@ HTMLElement._render = function(render){
 		this.reactivedata ??= new DataReactive(); //自定义元素在初始化时已确保，此句仅作用于内置元素
 		rd_delta = this.reactivedata.merge(this.rd_torender);
 		if(rd_delta !== undefined) render.call(this, rd_delta, render_acquired, merge_acquired); //null放行，可以作为自定义信号
+		// if(this.reactivedata.isequal(rd_delta)) render.call(this, rd_delta, render_acquired, merge_acquired);
 		this.rd_torender = undefined;
 	};
 };
@@ -20,7 +21,7 @@ HTMLElement._connectedcallback = function(connectedcallback){
 };
 
 const defaultStyleSheet = new CSSStyleSheet();
-for(let i = 1; i < document.styleSheets[0].cssRules.length; i++) defaultStyleSheet.insertRule(document.styleSheets[0].cssRules[i].cssText);
+for(let i=1; i<document.styleSheets[0].cssRules.length; i++) defaultStyleSheet.insertRule(document.styleSheets[0].cssRules[i].cssText);
 HTMLElement.prototype.initShadowRoot = function(){
 	if(this.shadowRoot == null) return;
 	this.reactivedata = new this.RDCLASS();
@@ -31,7 +32,7 @@ HTMLElement.prototype.initShadowRoot = function(){
 HTMLElement.prototype.reactiverender = HTMLElement._render(function(rd_delta, render_acquired, merge_acquired){
 	//到这里只有内置元素
 	if(typeof(render_acquired)!="function") return;
-	render_acquired.call(this, merge_acquired.merge(merge_acquired ? merge_acquired.call(this.reactivedata, this.rd_torender) : rd_delta));
+	render_acquired.call(this, merge_acquired ? merge_acquired.call(this.reactivedata, this.rd_torender) : rd_delta);
 });
 
 HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired, merge_acquired){
@@ -88,7 +89,7 @@ Promise.all(requestCache.values()).then(()=>{
 	constructor_withTemplate.forEach((C)=>{
 		C.prototype.reactiverender = HTMLElement._render(C.prototype.reactiverender);
 		C.prototype.connectedCallback = HTMLElement._connectedcallback(C.prototype.connectedCallback);
-		if(C.prototype.RDCLASS) Object.setPrototypeOf(C.prototype.RDCLASS, DataReactive);
+		if(C.prototype.RDCLASS) Object.setPrototypeOf(C.prototype.RDCLASS.prototype, DataReactive.prototype);
 		else C.prototype.RDCLASS = DataReactive;
 		customElements.define(C.prototype.template.id, C);
 	});

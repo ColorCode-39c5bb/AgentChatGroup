@@ -4,7 +4,7 @@ from python_multipart.multipart import Field, FormParser
 
 path_handler = {};
 async def app(scope, receive, send):
-	print(path_handler);
+	print(scope);
 	if scope["type"] != "http": return;
 	handler = path_handler.get(scope["path"], None);
 	if type(handler) == FunctionType: await handler(scope, receive, send);
@@ -14,7 +14,6 @@ async def app(scope, receive, send):
 def path(path:str):
 	def register_path(on_path):
 		async def on_path_wraped(scope, receive, send):
-			if scope["method"] != "POST": on_path(scope, receive, send);
 			await send({
 				"type": "http.response.start",
 				"status": 200,
@@ -23,8 +22,10 @@ def path(path:str):
 					["Access-Control-Allow-Origin", "*"]
 				]
 			});
+			if scope["query_string"]: scope["query"] = dict(map(lambda q: (q[0].decode(), q[1].decode()), parse.parse_qsl(scope["query_string"])))
+			if scope["method"] != "POST": return await on_path(scope, receive, send);
 			content_type = dict(scope["headers"]).get(b"content-type").decode();
-			if content_type is None: on_path(scope, receive, send);
+			if content_type is None: return await on_path(scope, receive, send);
 
 			def on_field(field: Field):
 				fields.append(field);
@@ -42,14 +43,13 @@ def path(path:str):
 			more_body = True;
 			while more_body:
 				recv = await receive();
-				parser_form.write(receive["body"]);
+				parser_form.write(recv["body"]);
 				more_body = recv["more_body"];
 			parser_form.finalize();
 			fields = map(lambda field: (field.field_name.decode(), field.value.decode()), fields);
-
-			if scope["query_string"]: scope["query"] = parse.parse_qs(scope["query_string"]);
 			return await on_path(scope, dict(fields), send);
 		path_handler[path] = on_path_wraped;
+		print(path_handler);
 		return on_path_wraped;
 	return register_path;
 

@@ -12,7 +12,9 @@ class ChatAgentNameMessageToResponse(AssistantAgent):
 
     async def on_messages_stream(this, messages, cancellation_token) -> AsyncGenerator[AgentEvent | ChatMessage | Response, None]:
         g = super().on_messages_stream(messages, cancellation_token);
+        response = None;
         async for r in g:
-            if isinstance(r, Response):
-                r.chat_message.content = f"【{this.name}】" + r.chat_message.content;
+            response = r;
             yield r;
+        response.chat_message.content = f"【{this.name}】" + response.chat_message.content;
+        return;
