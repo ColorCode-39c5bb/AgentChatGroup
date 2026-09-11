@@ -1,14 +1,12 @@
 HTMLElement._render = function(render){
-	return function(rd_delta, render_acquired, merge_acquired){
+	return function(rd, render_acquired, construction){
 		this.rd_torender ??= [];
-		this.rd_torender.push(rd_delta);
+		this.rd_torender.push(rd);
 		if(this.__proto__.constructor == HTMLElement) return; //排除还没有升级的自定义元素
 		if(!this.isConnected) return;
 
-		this.reactivedata ??= new DataReactive(); //自定义元素在初始化时已确保，此句仅作用于内置元素
-		rd_delta = this.reactivedata.merge(this.rd_torender);
-		if(rd_delta !== undefined) render.call(this, rd_delta, render_acquired, merge_acquired); //null放行，可以作为自定义信号
-		// if(this.reactivedata.isequal(rd_delta)) render.call(this, rd_delta, render_acquired, merge_acquired);
+		this.reactivedata ??= new DataReactive(construction); //自定义元素在初始化时已确保，此句仅作用于内置元素
+		render.call(this, this.reactivedata.merge(this.rd_torender), render_acquired);
 		this.rd_torender = undefined;
 	};
 };
@@ -23,19 +21,19 @@ HTMLElement._connectedcallback = function(connectedcallback){
 const defaultStyleSheet = new CSSStyleSheet();
 for(let i=1; i<document.styleSheets[0].cssRules.length; i++) defaultStyleSheet.insertRule(document.styleSheets[0].cssRules[i].cssText);
 HTMLElement.prototype.initShadowRoot = function(){
-	if(this.shadowRoot == null) return;
-	this.reactivedata = new this.RDCLASS();
+	if(this.shadowRoot == null) new Error("未开启ShadowRoot");
+	this.reactivedata = this.RDCLASS.call(Reflect.construct(DataReactive, [], this.RDCLASS));
 	this.shadowRoot.adoptedStyleSheets.push(defaultStyleSheet);
 	this.shadowRoot.appendChild(this.template.content.cloneNode(true));
 }
 
-HTMLElement.prototype.reactiverender = HTMLElement._render(function(rd_delta, render_acquired, merge_acquired){
+HTMLElement.prototype.reactiverender = HTMLElement._render(function(rd_merged, render_acquired){
 	//到这里只有内置元素
 	if(typeof(render_acquired)!="function") return;
-	render_acquired.call(this, merge_acquired ? merge_acquired.call(this.reactivedata, this.rd_torender) : rd_delta);
+	render_acquired.call(this, rd_merged);
 });
 
-HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired, merge_acquired){
+HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired, construction){
 	//if(!rdarray) throw new Error("rdarray必须是数组, 否则此方法不应该有机会调用");
 	if(rdarray === undefined) return;
 	this.Ns_active ??= [this];
@@ -49,7 +47,7 @@ HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired, me
 			this.container.appendChild(next);
 			this.Ns_active.push(next);
 		}
-		next.reactiverender(rdarray[i], render_acquired, merge_acquired);
+		next.reactiverender(rdarray[i], render_acquired, construction);
 	}
 	for(let j=this.Ns_active.length-rdarray.length; j>0; j--){
 		const item = this.Ns_active.pop();
@@ -59,27 +57,59 @@ HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired, me
 };
 
 
-function DataReactive(rd_raw){
-	Object.assign(this, rd_raw);
+function DataReactive(construction){
+	Object.defineProperty(this, "construction", {value: construction||{i_f: false, isprimary: true}, enumerable: false, writable: true});
+	return this;
 }
 
-DataReactive.prototype.merge = function(Ns_rd_delta){
-	const rd_delta = Ns_rd_delta.reduce(function(prev, cur){
-		if(!prev) return cur; //if(!cur) return prev;
-		return Object.assign(prev, cur);
-	});
-	Object.assign(this, rd_delta);
-	return rd_delta;
-};
-
-DataReactive.prototype.isequal = function(o){
-	return this == o;
+DataReactive.prototype.merge = function(rd_torender){
+	function f(dt, dd, construction){
+		if(dd.i_f===undefined?construction.i_f:dd.i_f){
+			Object.keys(dd).forEach((k)=>{
+				if(!dt[k]) return dt[k]=dd[k];
+				if(dd[k].i_f===undefined?construction[k].i_f:dd[k].i_f){
+					if(!dd[k]) return;
+					if(dd[k].__proto__.constructor==Array) return dt[k].push(...dd[k]);
+				}else{
+					if(!dd[k]) return dt[k]=dd[k];
+					if(dd[k].__proto__.constructor==Array) return dt[k]=dd[k];
+				}
+				if(dd[k].isprimary===undefined?construction[k].isprimary:dd[k].isprimary || typeof(dd[k])=="object") return dt[k]=dd[k];
+				dt[k] = f(dt[k], dd[k], construction[k]);
+			});
+			return dt;	
+		} else {
+			Object.keys(dt).forEach((k)=>{
+				if(!dt[k]) return;
+				if(dd[k].i_f===undefined?construction[k].i_f:dd[k].i_f){
+					if(!dd[k]) return dd[k]=dt[k];
+					if(dd[k].__proto__.constructor==Array){
+						dt[k].push(...dd[k]);
+						return dd[k] = dt[k];
+					}
+				}else{
+					if(!dd[k]) return;
+					if(dd[k].__proto__.constructor==Array) return dt[k]=dd[k];
+				}
+				if(dd[k].isprimary===undefined?construction[k].isprimary:dd[k].isprimary || typeof(dd[k])=="object") return;
+				dd[k] = f(dt[k], dd[k], construction[k]);
+			});
+			return dd;
+		}
+	}
+	for(let rd of rd_torender){
+		if(!rd) continue;
+		f(this, {value: rd}, Object.defineProperty({value: this.construction}, "i_f", {value: true}));
+	};
+	return this.value;
 };
 
 
 import {requestCache} from "./template.js";
 import NotSlotted from "./component/NotSlotted.js";
 import AppMain from "./component/AppMain.js";
+window.TRUE = {value: true, enumerable: false};
+window.FALSE = {value: false, enumerable: false};
 window.constructor_withTemplate = [];
 //window.router = new Router(config_route);
 //window.router.push("/home");

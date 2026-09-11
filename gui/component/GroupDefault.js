@@ -17,7 +17,7 @@ export default function GroupDefault(){
 	dialog_member_new.addEventListener("close", function(){
 		if(this.returnValue == "N") return;
 		const agent = new FormData(this.firstElementChild);
-		fetch("http://localhost:5000/member?group="+_this.reactivedata.name, {
+		fetch("http://localhost:5000/member?group="+_this.reactivedata.value.name, {
 			method: "POST",
 			body: agent
 		})
@@ -29,9 +29,8 @@ export default function GroupDefault(){
 			this.querySelectorAll("input").forEach(el=>el.value="");
 		});
 	});
-	_this.addEventListener("message-send", function(e){
-		// e.detail.append("group", this.);
-		fetch("http://localhost:5000/message?group="+this.reactivedata.name, {
+	_this.shadowRoot.addEventListener("message-send", function(e){
+		fetch("http://localhost:5000/message?group="+_this.reactivedata.value.name, {
 			method: "POST",
 			body: e.detail
 		})
@@ -41,7 +40,7 @@ export default function GroupDefault(){
 			const decoder = new TextDecoder();
 			while(!isdone){
 				const {done, value} = await reader.read();
-				const messages = decoder.decode(value).split("\n").map(function(o){
+				const messages = decoder.decode(value).split("\n").filter(o=>o).map(function(o){
 					if(!o) return undefined;
 					//if(m_e.type == "UserInputRequestedEvent")
 					return JSON.parse(o);
@@ -76,59 +75,59 @@ GroupDefault.prototype.disconnectedCallback = function(){
 GroupDefault.prototype.adoptedCallback = function(){
 	
 }
-GroupDefault.prototype.reactiverender = function(rd_delta){
-	const rd_this = this.reactivedata;
+GroupDefault.prototype.reactiverender = function(rd){
 	const {member:el_member, message:el_message} = this.els_tooperate;
-	if(rd_delta.name){
-		fetch("http://localhost:5000/group?name="+rd_delta.name)
+	if(rd.fetch)
+		return fetch("http://localhost:5000/group?name="+rd.fetch.name)
 		.then(rep=>rep.json())
-		.then(group=>this.reactiverender(group));
-		return;
-	}
-	if(rd_delta.members) el_member.reactiverender_for(rd_this.members,
-		function(rd_member){
-			this.lastElementChild.innerHTML = rd_member.name;
-		},
-	);
-	if(rd_delta.messages) el_message.reactiverender_for(rd_this.messages,
-		function(rd_message){
-			if(rd_message.source == "user") this.firstElementChild.classList.add("sender-user");
-			else this.firstElementChild.classList.remove("sender-user");
-			this.lastElementChild.innerHTML = rd_message.content;
-		},
-	);
+		.then(group=>this.reactiverender(Object.defineProperties(group, {
+			i_f: FALSE,
+			isprimary: FALSE
+		})));
+	if(rd.members) 
+		el_member.reactiverender_for(
+			rd.members,
+			function(rd_member){
+				this.lastElementChild.innerHTML = rd_member.name;
+			},
+		);
+	if(rd.messages) 
+		el_message.reactiverender_for(
+			rd.messages,
+			function(rd_message){
+				if(rd_message.source == "user") this.firstElementChild.classList.add("sender-user");
+				else this.firstElementChild.classList.remove("sender-user");
+				this.lastElementChild.innerHTML = rd_message.content;
+			},
+		);
 }
 
-GroupDefault.prototype.RDCLASS = function(rd_raw){
-	this.name = null;
-	this.messages = [];
-	this.members = [];
-	this.manager_state = {
-		type: "RoundRobinManagerState",
-		version: "1.0.0",
-		message_thread: [],
-		current_turn: 0,
-		next_speaker_index: 0,
-	}
-}
-GroupDefault.prototype.RDCLASS.prototype.merge = function(Ns_rd_delta){
-	const rd = Ns_rd_delta.reduce(function(prev, cur){
-		if(!prev) return cur; if(!cur) return prev;
-		if(!prev.members) prev.members = cur.members
-		else prev.members.push(...cur.members || []);
-		if(!prev.messages) prev.messages = cur.messages;
-		else prev.messages.push(...cur.messages || []);
-		return prev;
-	});
-	if(!rd) return rd;
-	this.members.push(...rd.members || []);
-	this.messages.push(...rd.messages || []);
-	const rd_temp = {
-		members: rd.members,
-		messages: rd.messages,
-		// name: rd.name==this.name ? undefined : rd.name,
+GroupDefault.prototype.RDCLASS = function(){
+	this.construction = {
+		i_f: true,
+		fetch: {
+			i_f: false,
+			isprimary: true
+		},
+		//name: {},
+		members: {
+			i_f: true,
+			construction: {
+				i_f: false,
+				isprimary: true
+			}
+		},
+		messages: {
+			i_f: true,
+			construction: {
+				i_f: false,
+				isprimary: true
+			}
+		},
+		manager_state: {
+			i_f: false,
+			isprimary: true,
+		},
 	};
-	delete rd.members; delete rd.messages;
-	Object.assign(this, rd);
-	return Object.assign(rd, rd_temp);
-};
+	return this;
+}

@@ -13,7 +13,7 @@ export default function AppMain(){
 	const list_group = _this.shadowRoot.getElementById("list-group");
 	list_group.addEventListener("click", function(e){
 		if(!e.target.classList.contains("group")) return;
-		_this.reactiverender({cur_group: e.target.reactivedata});
+		_this.reactiverender({cur_group: e.target.reactivedata.value});
 	});
 	btn_new.addEventListener("click", function(e){
 		dialog_group_new.showModal();
@@ -28,7 +28,7 @@ export default function AppMain(){
 		// .then(rep=>rep.json())
 		.then(rep=>{
 			_this.reactiverender({
-				groups: [Object.fromEntries(group.entries())],
+				groups: Object.defineProperty([Object.fromEntries(group.entries())], "i_f", TRUE),
 			});
 			this.querySelectorAll("input").forEach(el=>el.value="");
 		});
@@ -42,7 +42,10 @@ export default function AppMain(){
 
 	fetch("http://localhost:5000")
 	.then(rep=>rep.json())
-	.then(groups=>_this.reactiverender({ groups }));
+	.then(groups=>_this.reactiverender(Object.defineProperties({groups}, {
+		i_f: FALSE,
+		isprimary: TRUE
+	})));
 
 	return _this;
 }
@@ -60,34 +63,33 @@ AppMain.prototype.disconnectedCallback = function(){
 AppMain.prototype.adoptedCallback = function(){
 	
 }
-AppMain.prototype.reactiverender = function(rd_delta){
-	const rd_this = this.reactivedata;
+AppMain.prototype.reactiverender = function(rd){
 	const {item_group, group:el_group} = this.els_tooperate;
-
-	el_group.reactiverender(rd_delta.cur_group);
-	if(rd_delta.groups) item_group.reactiverender_for(rd_this.groups,
+	if(rd.cur_group)
+		el_group.reactiverender({fetch: rd.cur_group});
+	if(rd.groups) item_group.reactiverender_for(rd.groups,
 		function(rd_group){
 			this.lastElementChild.innerHTML = rd_group.name;
+			if(rd_group.name == rd.cur_group?.name) this.classList.add("selected");
+			else this.classList.remove("selected");
 		},
 	);
 }
 
 AppMain.prototype.RDCLASS = function(){
-	this.groups = [];
-}
-
-AppMain.prototype.RDCLASS.prototype.merge = function(Ns_rd_delta){
-	const rd_delta = Ns_rd_delta.reduce(function(prev, cur){
-		if(!prev) return cur; if(!cur) return prev;
-		prev.groups.push(...cur.groups || []);
-		return prev;
-	});
-	if(!rd_delta) return rd_delta;
-	this.groups.push(...rd_delta.groups || []);
-	const rd_temp = {
-		groups: rd_delta.groups
-	}
-	delete rd_delta.groups;
-	Object.assign(this, rd_delta);
-	return Object.assign(rd_delta, rd_temp);
+	this.construction = {
+		i_f: true,
+		cur_group: {
+			i_f: false,
+			isprimary: true
+		},
+		groups: {
+			i_f: true,
+			construction: {
+				i_f: false,
+				isprimary: true,
+			}
+		},
+	};
+	return this;
 }
