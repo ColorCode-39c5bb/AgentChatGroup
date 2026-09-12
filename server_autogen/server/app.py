@@ -3,10 +3,14 @@ from urllib import parse
 from python_multipart.multipart import Field, FormParser
 
 path_handler = {};
+pathws_handler = {};
 async def app(scope, receive, send):
 	print(scope);
-	if scope["type"] != "http": return;
-	handler = path_handler.get(scope["path"], None);
+	handler = None;
+	if scope["type"] == "http":
+		handler = path_handler.get(scope["path"], None);
+	elif scope["type"] == "websocket":
+		handler = pathws_handler.get(scope["path"], None);
 	if type(handler) == FunctionType: await handler(scope, receive, send);
 	else: await on_nopath_handler(scope, receive, send);
 
@@ -49,9 +53,25 @@ def path(path:str):
 			fields = map(lambda field: (field.field_name.decode(), field.value.decode()), fields);
 			return await on_path(scope, dict(fields), send);
 		path_handler[path] = on_path_wraped;
-		print(path_handler);
 		return on_path_wraped;
 	return register_path;
+
+
+def pathws(pathws:str):
+	def register_pathws(on_pathws):
+		async def on_pathws_wraped(scope, receive, send):
+			while True:
+				_receive = await receive();
+				match _receive["type"]:
+					case "websocket.connect":
+						await send({"type": "websocket.accept"});
+					case "websocket.disconnect":
+						await send({"type": "websocket.close", "reason": "disconnect"});
+					case _:
+						await on_pathws(scope, _receive, send);
+		pathws_handler[pathws] = on_pathws_wraped;
+		return on_pathws_wraped;
+	return register_pathws;
 
 
 async def on_nopath_handler(scope, receive, send):

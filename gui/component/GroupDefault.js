@@ -41,8 +41,7 @@ export default function GroupDefault(){
 			while(!isdone){
 				const {done, value} = await reader.read();
 				const messages = decoder.decode(value).split("\n").filter(o=>o).map(function(o){
-					if(!o) return undefined;
-					//if(m_e.type == "UserInputRequestedEvent")
+					if(m_e.type == "UserInputRequestedEvent");
 					return JSON.parse(o);
 				});
 				_this.reactiverender({ messages });

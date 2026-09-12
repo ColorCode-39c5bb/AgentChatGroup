@@ -7,8 +7,7 @@ import json
 from autogen_agentchat.base import TaskResult
 
 from agent.Group import Group
-from server.app import path, app
-
+from server.app import path, app, pathws
 
 groups: dict[str, Group] = {};
 # runtime = SingleThreadedAgentRuntime();
@@ -74,4 +73,13 @@ async def on_member(scope, receive, send):
 	});
 
 
-uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info");
+@pathws("/message")
+async def on_message_ws(scope, receive, send):
+	print(receive);
+	await send({
+		"type": "websocket.send",
+		"text": "Hello world!",
+	});
+
+
+uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info", ws="websockets-sansio");
