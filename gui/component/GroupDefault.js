@@ -40,10 +40,7 @@ export default function GroupDefault(){
 			const decoder = new TextDecoder();
 			while(!isdone){
 				const {done, value} = await reader.read();
-				const messages = decoder.decode(value).split("\n").filter(o=>o).map(function(o){
-					if(m_e.type == "UserInputRequestedEvent");
-					return JSON.parse(o);
-				});
+				const messages = decoder.decode(value).split("\n").filter(o=>o).map(m=>JSON.parse(m));
 				_this.reactiverender({ messages });
 				isdone = done;
 			}

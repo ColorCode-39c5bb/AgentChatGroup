@@ -4,6 +4,7 @@
 .venv
 .vscode
 langchain
+test
 
 
 server_autogen/.env

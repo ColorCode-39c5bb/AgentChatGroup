@@ -1,13 +1,13 @@
-import math
-from unittest import case
-
+import requests
 import uvicorn
 import json
 
-from autogen_agentchat.base import TaskResult
+from autogen_agentchat.base import TaskResult, Response
+from autogen_agentchat.messages import UserInputRequestedEvent, TextMessage, MultiModalMessage, StructuredContentType, BaseChatMessage
 
 from agent.Group import Group
 from server.app import path, app, pathws
+
 
 groups: dict[str, Group] = {};
 # runtime = SingleThreadedAgentRuntime();
@@ -43,14 +43,24 @@ async def on_message(scope, receive, send):
 	print(receive);
 	match scope["method"]:
 		case "POST":
-			group = groups[scope["query"]["group"]];
-			async for m_e in group(receive["content"]):
-				if isinstance(m_e, TaskResult): break;
+			file = receive.get("file", None);
+			message = receive["content"];
+			if file is not None:
+				r = requests.post(
+					"https://api.deepseek.com/files",
+					headers={'Authorization': 'Bearer sk-6161741cf2e3421c9f3cfbd418413a6c'},
+					files={"file": (file.field_name, file.file_object)},
+					data={"purpose": "user_data"}
+				)
+				message = MultiModalMessage(content=[message, r.json()["id"]], source="user");
+			async for m in groups[scope["query"]["group"]](message):
+				if type(m) == Response: m = m.chat_massage;
 				await send({
 					"type": "http.response.body",
-					"body": (json.dumps(m_e.dump()) + "\n").encode(),
+					"body": (json.dumps(m.dump()) + "\n").encode(),
 					"more_body": True
 				});
+				if type(m) == UserInputRequestedEvent: break;
 		case "GET":
 			pass;
 	await send({
@@ -72,14 +82,14 @@ async def on_member(scope, receive, send):
 		"body": b"",
 	});
 
-
-@pathws("/message")
-async def on_message_ws(scope, receive, send):
-	print(receive);
-	await send({
-		"type": "websocket.send",
-		"text": "Hello world!",
-	});
+# ws_message_send = None;
+# @pathws("/message")
+# async def on_message_ws(scope, receive, send):
+# 	if receive["type"] == "websocket.connect":
+# 		await send({"type": "websocket.accept"});
+# 		global ws_message_send; ws_message_send = send;
 
 
-uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info", ws="websockets-sansio");
+uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info");
+# uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info", ws="websockets-sansio");
+
