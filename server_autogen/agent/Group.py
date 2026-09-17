@@ -42,13 +42,19 @@ def multimodal(message: LLMMessage, context: dict) -> dict[str, list[ChatComplet
 		else:
 			raise ValueError(f"Unknown content part: {part}")
 	return {"content": parts}
+def text(message: LLMMessage, context: dict[str, Any]) -> dict[str, str]:
+	assert isinstance(message, (UserMessage, AssistantMessage))
+	assert isinstance(message.content, str)
+	prepend = context.get("prepend_name", False)
+	prefix = f"【{message.source}】" if prepend else ""
+	return {"content": prefix + message.content}
 
 register_transformer("openai", "deepseek-flash",{
 	**__BASE_TRANSFORMER_MAP,
 	**{
 		UserMessage: build_conditional_transformer_func(
 			funcs_map={
-				"text": single_user_transformer_funcs,
+				"text": base_user_transformer_funcs+[_set_name, text],
 				"multimodal": base_user_transformer_funcs+[_set_name, multimodal],
 			},
 			message_param_func_map=user_transformer_constructors,

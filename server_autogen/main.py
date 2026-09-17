@@ -45,7 +45,7 @@ async def on_message(scope, receive, send):
 		case "POST":
 			file = receive.get("file", None);
 			message = receive["content"];
-			if file is not None:
+			if file.file_name:
 				r = requests.post(
 					"https://api.deepseek.com/files",
 					headers={'Authorization': 'Bearer sk-6161741cf2e3421c9f3cfbd418413a6c'},
