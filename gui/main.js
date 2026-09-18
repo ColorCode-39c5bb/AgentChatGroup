@@ -1,11 +1,11 @@
 HTMLElement._render = function(render){
-	return function(rd, render_acquired, construction){
+	return function(rd, render_acquired){
 		this.rd_torender ??= [];
 		this.rd_torender.push(rd);
 		if(this.__proto__.constructor == HTMLElement) return; //排除还没有升级的自定义元素
 		if(!this.isConnected) return;
 
-		this.reactivedata ??= new DataReactive(construction); //自定义元素在初始化时已确保，此句仅作用于内置元素
+		this.reactivedata ??= new DataReactive(); //自定义元素在初始化时已确保，此句仅作用于内置元素
 		render.call(this, this.reactivedata.merge(this.rd_torender), render_acquired);
 		this.rd_torender = undefined;
 	};
@@ -33,7 +33,7 @@ HTMLElement.prototype.reactiverender = HTMLElement._render(function(rd_merged, r
 	render_acquired.call(this, rd_merged);
 });
 
-HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired, construction){
+HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired){
 	//if(!rdarray) throw new Error("rdarray必须是数组, 否则此方法不应该有机会调用");
 	if(rdarray === undefined) return;
 	this.Ns_active ??= [this];
@@ -47,7 +47,7 @@ HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired, co
 			this.container.appendChild(next);
 			this.Ns_active.push(next);
 		}
-		next.reactiverender(rdarray[i], render_acquired, construction);
+		next.reactiverender(rdarray[i], render_acquired);
 	}
 	for(let j=this.Ns_active.length-rdarray.length; j>0; j--){
 		const item = this.Ns_active.pop();
@@ -57,8 +57,8 @@ HTMLElement.prototype.reactiverender_for = function(rdarray, render_acquired, co
 };
 
 
-function DataReactive(construction){
-	Object.defineProperty(this, "construction", {value: construction||{i_f: false, isprimary: true}, enumerable: false, writable: true});
+function DataReactive(){
+	Object.defineProperty(this, "construction", {value: {i_f: false, isprimary: true}, enumerable: false, writable: true});
 	return this;
 }
 

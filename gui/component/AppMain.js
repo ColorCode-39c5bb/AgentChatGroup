@@ -9,7 +9,7 @@ export default function AppMain(){
 	_this.initShadowRoot();
 
 	const dialog_group_new = _this.shadowRoot.getElementById("group-new");
-	const btn_new = _this.shadowRoot.getElementById("btn-new");
+	const btn_new = _this.shadowRoot.querySelector(".btn-new");
 	const list_group = _this.shadowRoot.getElementById("list-group");
 	list_group.addEventListener("click", function(e){
 		if(!e.target.classList.contains("group")) return;

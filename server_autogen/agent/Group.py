@@ -1,25 +1,17 @@
-from typing import AsyncGenerator, Mapping, Any, Literal
 from asyncio import Future
-import json
+from typing import AsyncGenerator, Any, Literal
 
-from autogen_agentchat.agents import AssistantAgent, BaseChatAgent, UserProxyAgent
-from autogen_agentchat.base import TerminationCondition, TaskResult
-from autogen_agentchat.conditions import TextMentionTermination, ExternalTermination
-from autogen_agentchat.messages import BaseChatMessage, BaseAgentEvent, UserInputRequestedEvent, MultiModalMessage, TextMessage
-from autogen_agentchat.teams import BaseGroupChat, RoundRobinGroupChat, SelectorGroupChat
-from autogen_core import Image
-from autogen_core.memory import Memory, ListMemory, MemoryContent
-from autogen_core.models import ModelFamily, UserMessage, LLMMessage, AssistantMessage
+from autogen_agentchat.agents import AssistantAgent, BaseChatAgent
+from autogen_agentchat.base import TaskResult
+from autogen_agentchat.messages import BaseChatMessage, BaseAgentEvent, MultiModalMessage
+from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_core.memory import ListMemory, MemoryContent
+from autogen_core.models import UserMessage, LLMMessage, AssistantMessage
+from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-from collections.abc import Sequence
-
-from autogen_ext.models.openai._message_transform import user_condition, single_user_transformer_funcs, \
-	base_user_transformer_funcs, _set_name, user_transformer_constructors, __BASE_TRANSFORMER_MAP
+from autogen_ext.models.openai._message_transform import user_condition, base_user_transformer_funcs, _set_name, user_transformer_constructors, __BASE_TRANSFORMER_MAP
 from autogen_ext.models.openai._transformation import register_transformer, build_conditional_transformer_func
 from openai.types.chat import ChatCompletionContentPartParam, ChatCompletionContentPartTextParam
-from pydantic import BaseModel
-
-from .ChatAgentNameMessageToResponse import ChatAgentNameMessageToResponse
 
 
 class ChatCompletionContentPartFileIDParam(dict):
@@ -65,11 +57,11 @@ register_transformer("openai", "deepseek-flash",{
 
 llm = OpenAIChatCompletionClient(
 	model="deepseek-flash",
-	api_key="sk-6161741cf2e3421c9f3cfbd418413a6c",
+	api_key="sk-9d80a1e461994132a683d9bcfb2686da",
 	base_url="https://api.deepseek.com",
 	model_info={
 		"vision": True,
-		"function_calling": False,
+		"function_calling": True,
 		"json_output": True,
 		"family": "deepseek-flash",
 		"structured_output": True,
@@ -78,32 +70,29 @@ llm = OpenAIChatCompletionClient(
 );
 
 
-class Group():
+class Group:
 	def __init__(this,
 		name:str,
-	*,	max_turns: int | None = None,
 	):
 		this.name = name;
 		# this.termination_condition = ExternalTermination();
 		this.groupchat = None;
 
-		async def input_func(prompt:str, cancellation_token=None):
-			this.user_input = Future();
-			return await this.user_input;
+		# async def input_func(prompt:str, cancellation_token=None):
+		# 	this.user_input = Future();
+		# 	return await this.user_input;
 		this.messages = ListMemory(name);
 		this.user_input:Future[str]|None = None;
 		this.members:list[BaseChatAgent] = []; ##[UserProxyAgent("user", input_func=input_func)];
 
-		this.add_member({"name": "aaa", "system_message": "你是一个智能体助手"});
+		this.add_member({"name": "aaa", "system_message": "你是本群的一个智能体助手"});
 
 	async def __call__(this,
 		message: str|MultiModalMessage,
 	) -> AsyncGenerator[BaseAgentEvent | BaseChatMessage | TaskResult, None]:
 		async for m in this.groupchat.run_stream(task=message):
+			if type(m)== TaskResult: return;
 			print(m);
-			if type(m)== TaskResult:
-				this.user_input = None;
-				return;
 			await this.messages.add(MemoryContent(mime_type="application/json", content=m.dump()));
 			yield m;
 
@@ -120,6 +109,9 @@ class Group():
 		this.members.append(AssistantAgent(
 			agent["name"], llm,
 			# model_client_stream=True,
+			tools=[
+				FunctionTool(this.get_members, "获取群聊所有成员")
+			],
 			system_message = f"""
 你是一个在群聊里的AI智能体，群聊成员由你和其他用户组成。
 你需要通过name区分发言者，即每条消息前“【】”包含的内容，【name】是系统自动添加的，你无需生成。
@@ -135,5 +127,8 @@ class Group():
 			this.members,
 			name=this.name,
 			# termination_condition=this.termination_condition,
-			max_turns = 1,
+			max_turns=len(this.members),
 		);
+
+	def get_members(this)->list[str]:
+		return [agent.name for agent in this.members]+["user"];

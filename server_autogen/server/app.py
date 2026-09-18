@@ -31,16 +31,16 @@ def path(path:str):
 			content_type = dict(scope["headers"]).get(b"content-type").decode();
 			if content_type is None: return await on_path(scope, receive, send);
 
-			fields = []; boundary = None;
+			formdata = []; boundary = None;
 			if content_type.startswith("multipart/form-data"):
 				boundary = content_type.split("boundary=")[1];
 				content_type = "multipart/form-data";
 			def on_file(fl):
 				fl.file_object.seek(0);
-				fields.append(fl);
+				formdata.append(fl);
 			parser_form = FormParser(
 				content_type=content_type,
-				on_field=lambda fd:fields.append(fd),
+				on_field=lambda fd:formdata.append(fd),
 				on_file=on_file,
 				boundary=boundary,
 			);
@@ -50,11 +50,11 @@ def path(path:str):
 				parser_form.write(recv["body"]);
 				more_body = recv["more_body"];
 			parser_form.finalize();
-			fields = map(lambda f: (
+			formdata = map(lambda f: (
 				f.field_name.decode(),
-				f if isinstance(f, File) else f.value.decode()), fields
+				f if isinstance(f, File) else f.value.decode()), formdata
 			);
-			return await on_path(scope, dict(fields), send);
+			return await on_path(scope, dict(formdata), send);
 		path_handler[path] = on_path_wraped;
 		return on_path_wraped;
 	return register_path;

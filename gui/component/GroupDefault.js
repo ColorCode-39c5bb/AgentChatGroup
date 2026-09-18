@@ -8,7 +8,7 @@ export default function GroupDefault(){
 	_this.attachShadow({mode: "open"});
 	_this.initShadowRoot();
 	
-	const btn_new = _this.shadowRoot.getElementById("btn-new");
+	const btn_new = _this.shadowRoot.querySelector(".btn-new");
 	const dialog_member_new = _this.shadowRoot.getElementById("member-new");
 
 	btn_new.addEventListener("click", function(){
@@ -87,15 +87,22 @@ GroupDefault.prototype.reactiverender = function(rd){
 				this.lastElementChild.innerHTML = rd_member.name;
 			},
 		);
-	if(rd.messages) 
-		el_message.reactiverender_for(
-			rd.messages,
-			function(rd_message){
-				if(rd_message.source == "user") this.firstElementChild.classList.add("sender-user");
-				else this.firstElementChild.classList.remove("sender-user");
-				this.lastElementChild.innerHTML = rd_message.content;
-			},
-		);
+	if(rd.messages)
+		el_message.reactiverender_for(rd.messages, function(rd_message){
+			if(rd_message.source == "user"){
+				this.classList.add("message-user");
+				if(rd_message.type == "MultiModalMessage"){
+					this.classList.add("message-multi");
+					this.firstElementChild.reactiverender_for(rd_message.content, function(rd_content){this.innerHTML = rd_content;});
+				}else{
+					this.classList.remove("message-multi")
+					this.firstElementChild.innerHTML = rd_message.content;
+				}
+			}else{
+				this.classList.remove("message-user");
+				this.firstElementChild.innerHTML = rd_message.content;
+			}
+		});
 }
 
 GroupDefault.prototype.RDCLASS = function(){

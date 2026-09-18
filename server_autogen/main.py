@@ -1,13 +1,12 @@
-import requests
-import uvicorn
 import json
 
-from autogen_agentchat.base import TaskResult, Response
-from autogen_agentchat.messages import UserInputRequestedEvent, TextMessage, MultiModalMessage, StructuredContentType, BaseChatMessage
+import requests
+import uvicorn
+from autogen_agentchat.base import Response
+from autogen_agentchat.messages import UserInputRequestedEvent, MultiModalMessage
 
 from agent.Group import Group
-from server.app import path, app, pathws
-
+from server.app import path, app
 
 groups: dict[str, Group] = {};
 # runtime = SingleThreadedAgentRuntime();
@@ -48,7 +47,7 @@ async def on_message(scope, receive, send):
 			if file.file_name:
 				r = requests.post(
 					"https://api.deepseek.com/files",
-					headers={'Authorization': 'Bearer sk-6161741cf2e3421c9f3cfbd418413a6c'},
+					headers={'Authorization': 'Bearer sk-9d80a1e461994132a683d9bcfb2686da'},
 					files={"file": (file.field_name, file.file_object)},
 					data={"purpose": "user_data"}
 				)
@@ -82,14 +81,6 @@ async def on_member(scope, receive, send):
 		"body": b"",
 	});
 
-# ws_message_send = None;
-# @pathws("/message")
-# async def on_message_ws(scope, receive, send):
-# 	if receive["type"] == "websocket.connect":
-# 		await send({"type": "websocket.accept"});
-# 		global ws_message_send; ws_message_send = send;
 
-
-uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info");
-# uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info", ws="websockets-sansio");
+uvicorn.run(app, host="0.0.0.0", port=5000, log_level="debug");
 

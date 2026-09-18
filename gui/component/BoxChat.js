@@ -15,6 +15,7 @@ export default function BoxChat(){
 			bubbles: true,
 			detail: new FormData(this),
 		}));
+		Array.from(this.elements).forEach(el=>el.value = "");
 	});
 
 	_this.els_tooperate={

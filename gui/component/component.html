@@ -15,9 +15,9 @@
 <style>
 	:host{
 		display: inline;
-	}
-	img{
-		width: 100%;
+		img{
+			width: 100%;
+		}
 	}
 </style>
 </template>
@@ -25,8 +25,8 @@
 <template id="group-default">
 	<section id="list-message">
 		<div class="message">
-			<agent-default class="message-sender"></agent-default>
 			<div class="message-content">这里是消息内容</div>
+			<agent-default class="message-sender"></agent-default>
 		</div>
 	</section>
 	<section id="list-member">
@@ -38,7 +38,7 @@
 				<button value="N">取消</button>
 			</div>
 		</form></dialog>
-		<button id="btn-new">添加成员</button>
+		<button class="btn-new">添加成员</button>
 		<div class="member">
 			<agent-default class="member-avatar"></agent-default>
 			<span class="member-name"></span>
@@ -48,60 +48,72 @@
 <style>
 	:host{
 		display: flex;
-	}
-	box-chat{
-		position: fixed;
-		bottom: 10vh;
-		left: 20%; right: 20%;
-		box-shadow: var(--box-shadow-middle);
-	}
-	dialog{
-		margin: auto;
-	}
-	#list-member{
-		flex-basis: 20%;
-		flex-grow: 0;
-	}
-	#list-message{
-		text-align: center;
-		flex-basis: 80%;
-		flex-grow: 1;
-	}
-	.message{
-		position: relative;
-		display: inline-block;
-		width: 70%;
-		min-height: 50px;
-
-		padding: 5px;
-		margin: 5px 0;
-		border-radius: 5px;
-		box-shadow: var(--box-shadow-middle);
-	}
-	.message-sender{
-		position: absolute;
-		top: 0px;
-		right: 102%;
-		height: 100%;
-		aspect-ratio: 1;
-		max-height: 50px;
-	}
-	.message-sender.sender-user{
-		left: 102%;
-	}
-	.message-content{
-		text-align: left;
+		box-chat{
+			position: fixed;
+			bottom: 10vh;
+			left: 20%; right: 20%;
+		}
+		dialog{
+			margin: auto;
+		}
+		#list-member{
+			flex-basis: 20%;
+			flex-grow: 0;
+			position: sticky; top: 0px;
+			align-self: start;
+		}
+		#list-message{
+			flex-basis: 80%;
+			flex-grow: 1;
+			padding: 0 10%;
+		}
 	}
 
 	.member{
-		border: 1px solid #000000;
+		border: var(--border-small);
 		padding: 5px;
 		height: 50px;
+		
+		agent-default.member-avatar{
+			display: inline-block;
+			aspect-ratio: 1;
+			height: 100%;
+		}
 	}
-	.member-avatar{
-		display: inline-block;
-		aspect-ratio: 1;
-		height: 100%;
+
+	.message{
+		position: relative;
+		justify-self: left;
+		width: fit-content;
+		min-height: 50px;
+
+		padding: 10px;
+		margin: 10px 0;
+		border: var(--border-small);
+		
+		agent-default.message-sender{
+			position: absolute;
+			top: 0px;
+			right: 102%;
+			height: 100%;
+			aspect-ratio: 1;
+			max-height: 50px;
+		}
+
+		&.message.message-user{
+			justify-self: right;
+			agent-default.message-sender{
+				left: 102%;
+			}
+		}
+		&.message.message-multi{
+			padding: 10px;
+			.message-content{
+				display: block;
+				padding: 5px;
+				border: var(--border-small);
+			}
+		}
 	}
 </style>
 </template>
@@ -110,12 +122,17 @@
 	<form>
 		<textarea name="content"></textarea>
 		<input name="file" type="file">
-		<input type="submit" value="发送">
+		<button type="submit">发送</button>
 	</form>
 <style>
-	textarea{
-		width: 100%;
-		resize: none;
+	:host{
+		border: var(--border-middle);
+		padding: 5px !important;
+
+		textarea{
+			width: 100%;
+			resize: none;
+		}
 	}
 </style>
 </template>
@@ -130,7 +147,7 @@
 				<button value="N">取消</button>
 			</div>
 		</form></dialog>
-		<button id="btn-new">添加群聊</button>
+		<button class="btn-new">添加群聊</button>
 		<div class="group">
 			<div class="group-avatar"></div>
 			<span class="group-name"></span>
@@ -140,18 +157,38 @@
 <style>
 	:host{
 		display: flex;
+		padding: 0 5px !important;
+		&fold{
+			display: none;
+		}
+
+		#btn-fold{
+			position: absolute;
+			top: 0px;
+			left: 0px;
+		}
+		group-default{
+			flex-basis: 90%; flex-grow: 1;
+		}
+		#list-group{
+			flex-basis: 10%;
+			position: sticky; top: 0px;
+			align-self: start;
+		}
 	}
-	group-default{
-		flex-basis: 80%;
-	}
-	#list-group{
-		flex-basis: 20%;
-	}
-	.group *{
-		pointer-events: none;
-	}
-	.group.selected{
-		background-color: var(--color-hover);
+	.group{
+		border: var(--border-small);
+		padding: 5px;
+		height: 50px;
+
+		*{
+			pointer-events: none;
+		}
+
+		&.group.selected{
+			border: var(--border-middle);
+			border-color: red;
+		}
 	}
 </style>
 </template>
