@@ -101,6 +101,7 @@ GroupDefault.prototype.reactiverender = function(rd){
 			}else{
 				this.classList.remove("message-user");
 				this.firstElementChild.innerHTML = rd_message.content;
+				this.lastElementChild.reactiverender({source: rd_message.source});
 			}
 		});
 }

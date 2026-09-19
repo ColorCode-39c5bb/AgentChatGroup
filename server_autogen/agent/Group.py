@@ -1,8 +1,9 @@
 from asyncio import Future
-from typing import AsyncGenerator, Any, Literal
+from typing import AsyncGenerator, Any, Literal, Mapping
 
 from autogen_agentchat.agents import AssistantAgent, BaseChatAgent
 from autogen_agentchat.base import TaskResult
+from autogen_agentchat.conditions import StopMessageTermination, MaxMessageTermination
 from autogen_agentchat.messages import BaseChatMessage, BaseAgentEvent, MultiModalMessage
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_core.memory import ListMemory, MemoryContent
@@ -57,7 +58,7 @@ register_transformer("openai", "deepseek-flash",{
 
 llm = OpenAIChatCompletionClient(
 	model="deepseek-flash",
-	api_key="sk-9d80a1e461994132a683d9bcfb2686da",
+	api_key="sk-e0b47408e32a4ffb8baa4f5a0e2d0672",
 	base_url="https://api.deepseek.com",
 	model_info={
 		"vision": True,
@@ -81,9 +82,9 @@ class Group:
 		# async def input_func(prompt:str, cancellation_token=None):
 		# 	this.user_input = Future();
 		# 	return await this.user_input;
-		this.messages = ListMemory(name);
-		this.user_input:Future[str]|None = None;
+		# this.user_input:Future[str]|None = None;
 		this.members:list[BaseChatAgent] = []; ##[UserProxyAgent("user", input_func=input_func)];
+		this.messages = ListMemory(name);
 
 		this.add_member({"name": "aaa", "system_message": "你是本群的一个智能体助手"});
 
@@ -109,8 +110,10 @@ class Group:
 		this.members.append(AssistantAgent(
 			agent["name"], llm,
 			# model_client_stream=True,
+			reflect_on_tool_use=True,
 			tools=[
-				FunctionTool(this.get_members, "获取群聊所有成员")
+				FunctionTool(this.get_members, "获取群聊所有成员"),
+				FunctionTool(this.get_member, "获取某成员的具体信息")
 			],
 			system_message = f"""
 你是一个在群聊里的AI智能体，群聊成员由你和其他用户组成。
@@ -126,9 +129,12 @@ class Group:
 		this.groupchat = RoundRobinGroupChat(
 			this.members,
 			name=this.name,
-			# termination_condition=this.termination_condition,
-			max_turns=len(this.members),
+			termination_condition=StopMessageTermination(),
+			# max_turns=len(this.members),
 		);
 
 	def get_members(this)->list[str]:
 		return [agent.name for agent in this.members]+["user"];
+
+	async def get_member(this, index:int)->Mapping[str, Any]:
+		return await this.members[index].save_state();
