@@ -1,9 +1,8 @@
-from asyncio import Future
 from typing import AsyncGenerator, Any, Literal, Mapping
 
 from autogen_agentchat.agents import AssistantAgent, BaseChatAgent
 from autogen_agentchat.base import TaskResult
-from autogen_agentchat.conditions import StopMessageTermination, MaxMessageTermination
+from autogen_agentchat.conditions import MaxMessageTermination
 from autogen_agentchat.messages import BaseChatMessage, BaseAgentEvent, MultiModalMessage
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_core.memory import ListMemory, MemoryContent
@@ -58,7 +57,7 @@ register_transformer("openai", "deepseek-flash",{
 
 llm = OpenAIChatCompletionClient(
 	model="deepseek-flash",
-	api_key="sk-736f9d3283cf453ebb9585407ff8d8cb",
+	api_key="sk-f82cb05e71a64264b3b8945dc51db820",
 	base_url="https://api.deepseek.com",
 	model_info={
 		"vision": True,
@@ -86,7 +85,7 @@ class Group:
 		this.members:list[BaseChatAgent] = []; ##[UserProxyAgent("user", input_func=input_func)];
 		this.messages = ListMemory(name);
 
-		this.add_member({"name": "aaa", "system_message": "你是本群的一个智能体助手"});
+		this.add_member({"name": "wel", "system_message": "你是本群的一个智能体助手"});
 
 	async def __call__(this,
 		message: str|MultiModalMessage,
@@ -99,12 +98,11 @@ class Group:
 
 	async def save_state(this):
 		state = await this.groupchat.save_state();
-		return {
+		state.update({
 			"name": this.name,
-			"members": list(map(lambda m: {"name": m.name}, this.members)),
 			"messages": list(map(lambda c: c.content, this.messages.content)),
-			"manager_state": state["agent_states"]["RoundRobinGroupChatManager"],
-		};
+		});
+		return state;
 
 	def add_member(this, agent):
 		this.members.append(AssistantAgent(
@@ -122,8 +120,8 @@ class Group:
 例如：
 	“@kax,我认同你的说法。”；
 	“@locy,@jil,你们今天心情怎么样？”。
-你的名字是“{agent["name"]}”，你要注意别人对你的@，但由你自己视情况决定是否回复@你的人。
-这是额外的自定义系统提示词：{agent["system_message"]}
+你的name是“{agent["name"]}”，你要注意别人对你的@，但由你自己视情况决定是否回复@你的人。
+这是额外的系统提示词：{agent["system_message"]}
 """
 		));
 		this.groupchat = RoundRobinGroupChat(

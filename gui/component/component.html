@@ -34,28 +34,35 @@
 <template id="group-default">
 	<section id="bar">
 		<span id="group-name">group name</span>
+		<button popovertarget="detail">|||</button>
 	</section>
+	<dialog id="detail" popover>
+		<label>version: <span></span></label>
+		<label>name: <span></span></label>
+		<label id="label-list-member">members: <span></span>
+			<section id="list-member">
+				<dialog id="member-new" popover><form method="dialog">
+					<label>name <input type="text" name="name"></label>
+					<label>system_message <input type="text" name="system_message"></label>
+					<div id="action">
+						<button value="Y" type="submit">创建</button>
+						<button value="N">取消</button>
+					</div>
+				</form></dialog>
+				<button class="btn-new" popovertarget="member-new">添加成员</button>
+				<div class="member">
+					<agent-default class="member-avatar"></agent-default>
+					<span class="member-name"></span>
+				</div>
+			</section>
+			<button class="fold-trigger"></button>
+		</label>
+	</dialog>
 	<section id="list-message">
 		<div class="message message-that">
 			<agent-default class="message-sender"></agent-default>
 			<div class="message-content">这里是消息内容</div>
 		</div>
-	</section>
-	<section id="list-member">
-		<dialog id="member-new"><form method="dialog">
-			<label>name <input type="text" name="name"></label>
-			<label>system_message <input type="text" name="system_message"></label>
-			<div id="action">
-				<button value="Y" type="submit">创建</button>
-				<button value="N">取消</button>
-			</div>
-		</form></dialog>
-		<button class="btn-new">添加成员</button>
-		<div class="member">
-			<agent-default class="member-avatar"></agent-default>
-			<span class="member-name"></span>
-		</div>
-		<button class="fold-trigger"></button>
 	</section>
 	<box-chat></box-chat>
 <style>
@@ -68,9 +75,6 @@
 			bottom: 10vh;
 			left: 20%; right: 20%;
 		}
-		dialog{
-			margin: auto;
-		}
 		#bar{
 			flex-basis: 100%;
 			position: sticky; top: 0px;
@@ -78,46 +82,10 @@
 			border-bottom: var(--border-middle);
 			z-index: 1;
 		}
-		#list-member{
-			flex-basis: 20%;
-			flex-grow: 0;
-			position: sticky; top: 0px;
-			align-self: start;
-			.fold-trigger{
-				position: absolute;
-				top: 0px; right: 0px;
-				&::before{
-					content: "▶";
-				}
-			}
-
-			&#list-member.fold{
-				flex-basis: 0;
-				*:not(.fold-trigger){
-					display: none;
-				}
-				.fold-trigger{
-					&::before{
-						content: "◀";
-					}
-				}
-			}
-		}
 		#list-message{
 			flex-basis: 80%;
 			flex-grow: 1;
 			padding: 0 10%;
-		}
-	}
-
-	.member{
-		border: var(--border-small);
-		padding: 5px;
-		height: 50px;
-		
-		agent-default.member-avatar{
-			display: inline-block;
-			height: 100%;
 		}
 	}
 
@@ -156,6 +124,47 @@
 			.message-content{
 				padding: 5px;
 				border: var(--border-small);
+			}
+		}
+	}
+
+	#detail{
+		label{
+			display: block;
+			margin: 5px 0;
+			padding: 5px;
+			border: var(--border-small);
+		}
+		
+		#label-list-member{
+			position: relative;
+			.fold-trigger{
+				position: absolute;
+				top: 0px; right: 0px;
+				&::before{
+					content: "▲";
+				}
+			}
+			&#label-list-member.fold{
+				*:not(.fold-trigger){
+					display: none;
+				}
+				.fold-trigger{
+					&::before{
+						content: "▼";
+					}
+				}
+			}
+		}
+
+		.member{
+			border: var(--border-small);
+			padding: 5px;
+			height: 50px;
+			
+			agent-default.member-avatar{
+				display: inline-block;
+				height: 100%;
 			}
 		}
 	}
@@ -213,7 +222,7 @@
 			position: sticky; top: 0px;
 			.fold-trigger{
 				position: absolute;
-				top: 50%; left: 0px;
+				top: 50vh; left: 0px;
 				&::before{
 					content: "◀";
 				}

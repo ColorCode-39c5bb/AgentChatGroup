@@ -10,6 +10,7 @@ export default function GroupDefault(){
 	
 	const btn_new = _this.shadowRoot.querySelector(".btn-new");
 	const dialog_member_new = _this.shadowRoot.getElementById("member-new");
+	const dialog_detail = _this.shadowRoot.getElementById("detail");
 
 	btn_new.addEventListener("click", function(){
 		dialog_member_new.showModal();
@@ -23,9 +24,9 @@ export default function GroupDefault(){
 		})
 		// .then(rep=>rep.json())
 		.then(rep=>{
-			_this.reactiverender({
-				members: [Object.fromEntries(agent.entries())],
-			});
+			_this.reactiverender({agent_states: Object.fromEntries([
+				[agent.get("name"), {}]
+			])});
 			this.querySelectorAll("input").forEach(el=>el.value="");
 		});
 	});
@@ -49,12 +50,13 @@ export default function GroupDefault(){
 	});
 
 	_this.els_tooperate={
-		dialog_member_new,
 		group_name: _this.shadowRoot.getElementById("group-name"),
-		list_member:_this.shadowRoot.getElementById("list-member"),
-			member: _this.shadowRoot.querySelector(".member"),
 		list_message:_this.shadowRoot.getElementById("list-message"),
 			message: _this.shadowRoot.querySelector(".message"),
+		dialog_detail,
+			list_member:_this.shadowRoot.getElementById("list-member"),
+				dialog_member_new,
+				member: _this.shadowRoot.querySelector(".member"),
 	};
 	return _this;
 }
@@ -73,19 +75,19 @@ GroupDefault.prototype.adoptedCallback = function(){
 	
 }
 GroupDefault.prototype.reactiverender = function(rd){
-	const {member:el_member, message:el_message, group_name:el_group_name} = this.els_tooperate;
+	const {dialog_detail:el_detail, member:el_member, message:el_message, group_name:el_group_name} = this.els_tooperate;
 	if(rd.fetch)
 		return fetch("http://localhost:5000/group?name="+rd.fetch.name)
 		.then(rep=>rep.json())
 		.then(group=>this.reactiverender(Object.defineProperties(group, {i_f: FALSE, isprimary: TRUE})));
-	if(rd.name) el_group_name.innerHTML = rd.name;
-	if(rd.members) 
-		el_member.reactiverender_for(
-			rd.members,
-			function(rd_member){
-				this.lastElementChild.innerHTML = rd_member.name;
-			},
-		);
+	el_detail.reactiverender(rd, function(rd){
+		el_member.reactiverender_for(Object.entries(rd.agent_states), function([k, v]){
+			this.lastElementChild.innerHTML = k;
+			this.firstElementChild.reactiverender({source: k});
+		});
+	});
+	if(rd.name)
+		el_group_name.innerHTML = rd.name;
 	if(rd.messages)
 		el_message.reactiverender_for(rd.messages, function(rd_message){
 			const el_content = this.querySelector(".message-content");
@@ -109,7 +111,7 @@ GroupDefault.prototype.reactiverender = function(rd){
 				}else if(rd_message.type == "ToolCallExecutionEvent"){
 					this.classList.add("message-multi");
 					el_content.reactiverender_for(rd_message.content, function(function_call){
-						this.innerHTML = `工具${function_call.name}执行结果：${function_call.content}`;
+						this.innerHTML = `${function_call.name} -> ${function_call.content}`;
 					});
 				}else{
 					this.classList.remove("message-multi");
@@ -128,12 +130,8 @@ GroupDefault.prototype.RDCLASS = function(){
 			isprimary: true
 		},
 		//name: {},
-		members: {
+		agent_states: {
 			i_f: true,
-			construction: {
-				i_f: false,
-				isprimary: true
-			}
 		},
 		messages: {
 			i_f: true,
