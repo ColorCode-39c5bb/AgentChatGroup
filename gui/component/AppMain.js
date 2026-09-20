@@ -1,7 +1,7 @@
 import templatePromise from "../template.js";
 templatePromise.then((templateDocument)=>{
 	AppMain.prototype.template = templateDocument.getElementById("app-main");
-	window.constructor_withTemplate.push(AppMain);
+	window.constructor_customelement.push(AppMain);
 });
 export default function AppMain(){
 	const _this = Reflect.construct(HTMLElement, [], AppMain);
@@ -21,15 +21,10 @@ export default function AppMain(){
 	dialog_group_new.addEventListener("close", function(e){
 		if(this.returnValue == "N") return;
 		const group = new FormData(this.firstElementChild);
-		fetch("http://localhost:5000/group", {
-			method: "POST",
-			body: group
-		})
+		fetch("http://localhost:5000/group", {method: "POST", body: group})
 		// .then(rep=>rep.json())
 		.then(rep=>{
-			_this.reactiverender({
-				groups: Object.defineProperty([Object.fromEntries(group.entries())], "i_f", TRUE),
-			});
+			_this.reactiverender({groups: [Object.fromEntries(group.entries())]});
 			this.querySelectorAll("input").forEach(el=>el.value="");
 		});
 	});

@@ -1,7 +1,7 @@
 import templatePromise from "../template.js";
 templatePromise.then((templateDocument)=>{
 	GroupDefault.prototype.template = templateDocument.getElementById("group-default");
-	window.constructor_withTemplate.push(GroupDefault);
+	window.constructor_customelement.push(GroupDefault);
 });
 export default function GroupDefault(){
 	const _this = Reflect.construct(HTMLElement, [], GroupDefault);
@@ -50,6 +50,7 @@ export default function GroupDefault(){
 
 	_this.els_tooperate={
 		dialog_member_new,
+		group_name: _this.shadowRoot.getElementById("group-name"),
 		list_member:_this.shadowRoot.getElementById("list-member"),
 			member: _this.shadowRoot.querySelector(".member"),
 		list_message:_this.shadowRoot.getElementById("list-message"),
@@ -72,14 +73,12 @@ GroupDefault.prototype.adoptedCallback = function(){
 	
 }
 GroupDefault.prototype.reactiverender = function(rd){
-	const {member:el_member, message:el_message} = this.els_tooperate;
+	const {member:el_member, message:el_message, group_name:el_group_name} = this.els_tooperate;
 	if(rd.fetch)
 		return fetch("http://localhost:5000/group?name="+rd.fetch.name)
 		.then(rep=>rep.json())
-		.then(group=>this.reactiverender(Object.defineProperties(group, {
-			i_f: FALSE,
-			isprimary: FALSE
-		})));
+		.then(group=>this.reactiverender(Object.defineProperties(group, {i_f: FALSE, isprimary: TRUE})));
+	if(rd.name) el_group_name.innerHTML = rd.name;
 	if(rd.members) 
 		el_member.reactiverender_for(
 			rd.members,
@@ -89,20 +88,35 @@ GroupDefault.prototype.reactiverender = function(rd){
 		);
 	if(rd.messages)
 		el_message.reactiverender_for(rd.messages, function(rd_message){
+			const el_content = this.querySelector(".message-content");
 			if(rd_message.source == "user"){
-				this.classList.add("message-user");
+				this.classList.add("message-this"); this.classList.remove("message-that");
 				if(rd_message.type == "MultiModalMessage"){
 					this.classList.add("message-multi");
-					this.firstElementChild.reactiverender_for(rd_message.content, function(rd_content){this.innerHTML = rd_content;});
+					el_content.reactiverender_for(rd_message.content, function(rd_content){this.innerHTML = rd_content;});
 				}else{
 					this.classList.remove("message-multi")
-					this.firstElementChild.innerHTML = rd_message.content;
+					el_content.reactiverender_for([rd_message.content], function(rd_content){this.innerHTML = rd_content;});
 				}
 			}else{
-				this.classList.remove("message-user");
-				this.firstElementChild.innerHTML = rd_message.content;
-				this.lastElementChild.reactiverender({source: rd_message.source});
+				this.classList.add("message-that"); this.classList.remove("message-this");
+				if(rd_message.type == "ToolCallRequestEvent"){
+					this.classList.add("message-multi");
+					el_content.reactiverender_for([
+						"请求工具：",
+						rd_message.content.reduce((prev, cur)=>prev+cur.name+"、", ""),
+					], function(rd_content){this.innerHTML = rd_content;});
+				}else if(rd_message.type == "ToolCallExecutionEvent"){
+					this.classList.add("message-multi");
+					el_content.reactiverender_for(rd_message.content, function(function_call){
+						this.innerHTML = `工具${function_call.name}执行结果：${function_call.content}`;
+					});
+				}else{
+					this.classList.remove("message-multi");
+					el_content.innerHTML = rd_message.content;
+				}
 			}
+			this.firstElementChild.reactiverender({source: rd_message.source});
 		});
 }
 

@@ -25,6 +25,8 @@ HTMLElement.prototype.initShadowRoot = function(){
 	this.reactivedata = this.RDCLASS.call(Reflect.construct(DataReactive, [], this.RDCLASS));
 	this.shadowRoot.adoptedStyleSheets.push(defaultStyleSheet);
 	this.shadowRoot.appendChild(this.template.content.cloneNode(true));
+	this.shadowRoot.querySelectorAll(".fold-trigger").forEach(btn=>btn.addEventListener("click", (e)=>btn.parentElement.classList.toggle("fold")));
+	this.shadowRoot.querySelectorAll(".fold-trigger").forEach(btn=>btn.parentElement.classList.add("fold"));
 }
 
 HTMLElement.prototype.reactiverender = HTMLElement._render(function(rd_merged, render_acquired){
@@ -110,13 +112,13 @@ import NotSlotted from "./component/NotSlotted.js";
 import AppMain from "./component/AppMain.js";
 window.TRUE = {value: true, enumerable: false};
 window.FALSE = {value: false, enumerable: false};
-window.constructor_withTemplate = [];
+window.constructor_customelement = [];
 //window.router = new Router(config_route);
 //window.router.push("/home");
 Promise.all(requestCache.values()).then(()=>{
 	const appmain = document.getElementById("appmain");
 	appmain.remove();
-	constructor_withTemplate.forEach((C)=>{
+	constructor_customelement.forEach((C)=>{
 		C.prototype.reactiverender = HTMLElement._render(C.prototype.reactiverender);
 		C.prototype.connectedCallback = HTMLElement._connectedcallback(C.prototype.connectedCallback);
 		if(C.prototype.RDCLASS) Object.setPrototypeOf(C.prototype.RDCLASS.prototype, DataReactive.prototype);

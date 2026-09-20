@@ -1,7 +1,7 @@
 import templatePromise from "../template.js";
 templatePromise.then((templateDocument)=>{
 	BoxChat.prototype.template = templateDocument.getElementById("box-chat");
-	window.constructor_withTemplate.push(BoxChat);
+	window.constructor_customelement.push(BoxChat);
 });
 export default function BoxChat(){
 	const _this = Reflect.construct(HTMLElement, [], BoxChat);

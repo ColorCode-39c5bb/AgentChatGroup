@@ -47,7 +47,7 @@ async def on_message(scope, receive, send):
 			if file.file_name:
 				r = requests.post(
 					"https://api.deepseek.com/files",
-					headers={'Authorization': 'Bearer sk-e0b47408e32a4ffb8baa4f5a0e2d0672'},
+					headers={'Authorization': 'Bearer sk-736f9d3283cf453ebb9585407ff8d8cb'},
 					files={"file": (file.field_name, file.file_object)},
 					data={"purpose": "user_data"}
 				)

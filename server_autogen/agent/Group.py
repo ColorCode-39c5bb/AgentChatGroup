@@ -58,7 +58,7 @@ register_transformer("openai", "deepseek-flash",{
 
 llm = OpenAIChatCompletionClient(
 	model="deepseek-flash",
-	api_key="sk-e0b47408e32a4ffb8baa4f5a0e2d0672",
+	api_key="sk-736f9d3283cf453ebb9585407ff8d8cb",
 	base_url="https://api.deepseek.com",
 	model_info={
 		"vision": True,
@@ -129,7 +129,7 @@ class Group:
 		this.groupchat = RoundRobinGroupChat(
 			this.members,
 			name=this.name,
-			termination_condition=StopMessageTermination(),
+			termination_condition=MaxMessageTermination(len(this.members)+1, False),
 			# max_turns=len(this.members),
 		);
 

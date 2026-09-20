@@ -4,7 +4,7 @@
 :host{
 	width: 100%; height: 100%;
 	text-align: center;
-	color: #666;
+	color: white; background-color: red;
 }
 </style>
 </template>
@@ -24,7 +24,6 @@
 		img{
 			height: 100%;
 		}
-
 		#detail{
 			display: var(--detail-display);
 		}
@@ -33,10 +32,13 @@
 </template>
 
 <template id="group-default">
+	<section id="bar">
+		<span id="group-name">group name</span>
+	</section>
 	<section id="list-message">
-		<div class="message">
-			<div class="message-content">这里是消息内容</div>
+		<div class="message message-that">
 			<agent-default class="message-sender"></agent-default>
+			<div class="message-content">这里是消息内容</div>
 		</div>
 	</section>
 	<section id="list-member">
@@ -53,11 +55,14 @@
 			<agent-default class="member-avatar"></agent-default>
 			<span class="member-name"></span>
 		</div>
+		<button class="fold-trigger"></button>
 	</section>
 	<box-chat></box-chat>
 <style>
 	:host{
 		display: flex;
+		flex-wrap: wrap;
+		align-content: start;
 		box-chat{
 			position: fixed;
 			bottom: 10vh;
@@ -66,11 +71,37 @@
 		dialog{
 			margin: auto;
 		}
+		#bar{
+			flex-basis: 100%;
+			position: sticky; top: 0px;
+			padding: 5px;
+			border-bottom: var(--border-middle);
+			z-index: 1;
+		}
 		#list-member{
 			flex-basis: 20%;
 			flex-grow: 0;
 			position: sticky; top: 0px;
 			align-self: start;
+			.fold-trigger{
+				position: absolute;
+				top: 0px; right: 0px;
+				&::before{
+					content: "▶";
+				}
+			}
+
+			&#list-member.fold{
+				flex-basis: 0;
+				*:not(.fold-trigger){
+					display: none;
+				}
+				.fold-trigger{
+					&::before{
+						content: "◀";
+					}
+				}
+			}
 		}
 		#list-message{
 			flex-basis: 80%;
@@ -95,29 +126,34 @@
 		justify-self: left;
 		width: fit-content;
 		min-height: 50px;
-
 		padding: 10px;
 		margin: 10px 0;
 		border: var(--border-small);
 		
+		.message-content{
+			border: none;
+			padding: 0px;
+		}
 		agent-default.message-sender{
 			position: absolute;
 			top: 0px;
-			right: 102%;
 			height: 100%;
-			max-height: 50px;
+			max-height: 48px;
 		}
-
-		&.message.message-user{
+		&.message.message-this{
 			justify-self: right;
 			agent-default.message-sender{
-				left: 102%;
+				right: -50px;
+			}
+		}
+		&.message.message-that{
+			justify-self: left;
+			agent-default.message-sender{
+				left: -50px;
 			}
 		}
 		&.message.message-multi{
-			padding: 10px;
 			.message-content{
-				display: block;
 				padding: 5px;
 				border: var(--border-small);
 			}
@@ -129,8 +165,8 @@
 <template id="box-chat">
 	<form>
 		<textarea name="content"></textarea>
-		<input name="file" type="file">
-		<button type="submit">发送</button>
+		<label><input name="file" type="file" style="display: none;"><button type="button" style="pointer-events: none;">文件</button></label>
+		<button>发送</button>
 	</form>
 <style>
 	:host{
@@ -138,8 +174,10 @@
 		padding: 5px !important;
 
 		textarea{
+			display: block;
 			width: 100%;
 			resize: none;
+			border-radius: 0;
 		}
 	}
 </style>
@@ -160,28 +198,38 @@
 			<div class="group-avatar"></div>
 			<span class="group-name"></span>
 		</div>
+		<button class="fold-trigger"></button>
 	</section>
 	<group-default id="el-group"></group-default>
 <style>
 	:host{
 		display: flex;
 		padding: 0 5px !important;
-		&fold{
-			display: none;
-		}
-
-		#btn-fold{
-			position: absolute;
-			top: 0px;
-			left: 0px;
-		}
 		group-default{
 			flex-basis: 90%; flex-grow: 1;
 		}
 		#list-group{
 			flex-basis: 10%;
 			position: sticky; top: 0px;
-			align-self: start;
+			.fold-trigger{
+				position: absolute;
+				top: 50%; left: 0px;
+				&::before{
+					content: "◀";
+				}
+			}
+
+			&#list-group.fold{
+				flex-basis: 0;
+				*:not(.fold-trigger){
+					display: none;
+				}
+				.fold-trigger{
+					&::before{
+						content: "▶";
+					}
+				}
+			}
 		}
 	}
 	.group{

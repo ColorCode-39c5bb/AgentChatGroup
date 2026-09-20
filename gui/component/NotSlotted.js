@@ -1,7 +1,7 @@
 import templatePromise from "../template.js";
 templatePromise.then((templateDocument)=>{
 	NotSlotted.prototype.template = templateDocument.getElementById("not-slotted");
-	window.constructor_withTemplate.push(NotSlotted);
+	window.constructor_customelement.push(NotSlotted);
 });
 export default function NotSlotted(){
 	const _this = Reflect.construct(HTMLElement, [], NotSlotted);
