@@ -31,6 +31,7 @@ export default function GroupDefault(){
 		});
 	});
 	_this.shadowRoot.addEventListener("message-send", function(e){
+		if(!e.detail.get("content")) return;
 		fetch("http://localhost:5000/message?group="+_this.reactivedata.value.name, {
 			method: "POST",
 			body: e.detail
@@ -42,7 +43,7 @@ export default function GroupDefault(){
 			while(!isdone){
 				const {done, value} = await reader.read();
 				const messages = decoder.decode(value).split("\n").filter(o=>o).map(m=>JSON.parse(m));
-				_this.reactiverender({ messages });
+				_this.reactiverender({agent_states:{"SelectorGroupChatManager":{message_thread: messages}}});
 				isdone = done;
 			}
 			console.log("流结束");
@@ -80,46 +81,53 @@ GroupDefault.prototype.reactiverender = function(rd){
 		return fetch("http://localhost:5000/group?name="+rd.fetch.name)
 		.then(rep=>rep.json())
 		.then(group=>this.reactiverender(Object.defineProperties(group, {i_f: FALSE, isprimary: TRUE})));
+
+	if(rd.name)
+		el_group_name.innerHTML = rd.name;
+	
+	el_message.reactiverender_for(rd.agent_states["SelectorGroupChatManager"].message_thread, function(rd_message){
+		this.firstElementChild.reactiverender({source: rd_message.source});
+		const el_content = this.querySelector(".message-content");
+		if(rd_message.source == "user"){
+			this.classList.add("message-this"); this.classList.remove("message-that");
+			if(rd_message.type == "MultiModalMessage"){
+				this.classList.add("message-multi");
+				el_content.reactiverender_for(rd_message.content, function(rd_content){this.innerHTML = rd_content;});
+				return;
+			}
+		}else{
+			this.classList.add("message-that"); this.classList.remove("message-this");
+			if(rd_message.type == "ToolCallRequestEvent"){
+				this.classList.add("message-multi");
+				el_content.reactiverender_for([
+					"请求工具：",
+					rd_message.content.reduce((prev, cur)=>prev+cur.name+"、", ""),
+				], function(rd_content){this.innerHTML = rd_content;});
+				return;
+			}else if(rd_message.type == "ToolCallExecutionEvent"){
+				this.classList.add("message-multi");
+				el_content.reactiverender_for(rd_message.content, function(function_call){
+					this.innerHTML = `${function_call.name} -> ${function_call.content}`;
+				});
+				return;
+			}
+		}
+		this.classList.remove("message-multi");
+		el_content.reactiverender_for([rd_message.content], function(rd_content){
+			if(typeof rd_content == "string") return this.innerHTML = rd_content;
+			this.innerHTML = Object.entries(rd_content).reduce((p, [at, content])=>p + at+","+content+"\n", "");
+		});
+	});
 	el_detail.reactiverender(rd, function(rd){
+		Object.entries(rd).forEach(function([k, v]){
+			const e=this.querySelector(`label[name="${k}"]`)?.firstElementChild;
+			if(e) e.innerHTML=v;
+		}, el_detail);
 		el_member.reactiverender_for(Object.entries(rd.agent_states), function([k, v]){
 			this.lastElementChild.innerHTML = k;
 			this.firstElementChild.reactiverender({source: k});
 		});
 	});
-	if(rd.name)
-		el_group_name.innerHTML = rd.name;
-	if(rd.messages)
-		el_message.reactiverender_for(rd.messages, function(rd_message){
-			const el_content = this.querySelector(".message-content");
-			if(rd_message.source == "user"){
-				this.classList.add("message-this"); this.classList.remove("message-that");
-				if(rd_message.type == "MultiModalMessage"){
-					this.classList.add("message-multi");
-					el_content.reactiverender_for(rd_message.content, function(rd_content){this.innerHTML = rd_content;});
-				}else{
-					this.classList.remove("message-multi")
-					el_content.reactiverender_for([rd_message.content], function(rd_content){this.innerHTML = rd_content;});
-				}
-			}else{
-				this.classList.add("message-that"); this.classList.remove("message-this");
-				if(rd_message.type == "ToolCallRequestEvent"){
-					this.classList.add("message-multi");
-					el_content.reactiverender_for([
-						"请求工具：",
-						rd_message.content.reduce((prev, cur)=>prev+cur.name+"、", ""),
-					], function(rd_content){this.innerHTML = rd_content;});
-				}else if(rd_message.type == "ToolCallExecutionEvent"){
-					this.classList.add("message-multi");
-					el_content.reactiverender_for(rd_message.content, function(function_call){
-						this.innerHTML = `${function_call.name} -> ${function_call.content}`;
-					});
-				}else{
-					this.classList.remove("message-multi");
-					el_content.innerHTML = rd_message.content;
-				}
-			}
-			this.firstElementChild.reactiverender({source: rd_message.source});
-		});
 }
 
 GroupDefault.prototype.RDCLASS = function(){
@@ -132,12 +140,11 @@ GroupDefault.prototype.RDCLASS = function(){
 		//name: {},
 		agent_states: {
 			i_f: true,
-		},
-		messages: {
-			i_f: true,
-			construction: {
-				i_f: false,
-				isprimary: true
+			"SelectorGroupChatManager": {
+				i_f: true,
+				message_thread: {
+					i_f: true
+				}
 			}
 		},
 		manager_state: {

@@ -37,24 +37,22 @@
 		<button popovertarget="detail">|||</button>
 	</section>
 	<dialog id="detail" popover>
-		<label>version: <span></span></label>
-		<label>name: <span></span></label>
-		<label id="label-list-member">members: <span></span>
-			<section id="list-member">
-				<dialog id="member-new" popover><form method="dialog">
-					<label>name <input type="text" name="name"></label>
-					<label>system_message <input type="text" name="system_message"></label>
-					<div id="action">
-						<button value="Y" type="submit">创建</button>
-						<button value="N">取消</button>
-					</div>
-				</form></dialog>
-				<button class="btn-new" popovertarget="member-new">添加成员</button>
-				<div class="member">
-					<agent-default class="member-avatar"></agent-default>
-					<span class="member-name"></span>
+		<label name="version">version: <span></span></label>
+		<label name="name">name: <span></span></label>
+		<label id="label-list-member">members:
+			<dialog id="member-new" popover><form method="dialog">
+				<label>name <input type="text" name="name"></label>
+				<label>system_message <input type="text" name="system_message"></label>
+				<div id="action">
+					<button value="Y" type="submit">创建</button>
+					<button value="N">取消</button>
 				</div>
-			</section>
+			</form></dialog>
+			<button class="btn-new" popovertarget="member-new">添加成员</button>
+			<div class="member">
+				<agent-default class="member-avatar"></agent-default>
+				<span class="member-name"></span>
+			</div>
 			<button class="fold-trigger"></button>
 		</label>
 	</dialog>
@@ -101,6 +99,7 @@
 		.message-content{
 			border: none;
 			padding: 0px;
+			white-space: pre-wrap;
 		}
 		agent-default.message-sender{
 			position: absolute;
@@ -220,6 +219,7 @@
 		#list-group{
 			flex-basis: 10%;
 			position: sticky; top: 0px;
+			align-self: flex-start;
 			.fold-trigger{
 				position: absolute;
 				top: 50vh; left: 0px;

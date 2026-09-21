@@ -99,10 +99,7 @@ DataReactive.prototype.merge = function(rd_torender){
 			return dd;
 		}
 	}
-	for(let rd of rd_torender){
-		if(!rd) continue;
-		f(this, {value: rd}, Object.defineProperty({value: this.construction}, "i_f", {value: true}));
-	};
+	for(let rd of rd_torender) f(this, {value: rd}, Object.defineProperty({value: this.construction}, "i_f", {value: true}));
 	return this.value;
 };
 
