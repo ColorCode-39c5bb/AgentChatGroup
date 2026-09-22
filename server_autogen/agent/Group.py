@@ -7,6 +7,7 @@ from autogen_agentchat.conditions import FunctionalTermination
 from autogen_agentchat.messages import BaseChatMessage, BaseAgentEvent, MultiModalMessage, StructuredMessage
 from autogen_agentchat.state import ChatAgentContainerState
 from autogen_agentchat.teams import SelectorGroupChat
+from autogen_core.model_context import UnboundedChatCompletionContext
 from autogen_core.models import UserMessage, LLMMessage, AssistantMessage
 from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
@@ -58,7 +59,7 @@ register_transformer("openai", "deepseek-flash",{
 
 llm = OpenAIChatCompletionClient(
 	model="deepseek-flash",
-	api_key="sk-ce3b7eb71209417683ca5280de1ea556",
+	api_key="sk-c978424f879241c6b2523a1c3753b6e2",
 	base_url="https://api.deepseek.com",
 	model_info={
 		"vision": True,
@@ -84,12 +85,15 @@ class Group:
 		# 	return await this.user_input;
 		# this.user_input:Future[str]|None = None;
 		this.members:list[BaseChatAgent] = []; ##[UserProxyAgent("user", input_func=input_func)];
-		this.speakers = []; this.spi = 0;
+		this.speakers = ["user"]; this.spi = 0;
+		this.context = [];
+		this.shutup = [];
 
 
 	async def __call__(this,
 		message: str|MultiModalMessage,
 	) -> AsyncGenerator[BaseAgentEvent | BaseChatMessage | TaskResult, None]:
+		this.speakers = this.get_members(); this.spi = 0;
 		async for m in this.groupchat.run_stream(task=message): yield m;
 
 	async def save_state(this):
@@ -103,6 +107,7 @@ class Group:
 	async def add_member(this, agents):
 		for i,agent in enumerate(agents): agents[i] = AssistantAgent(
 			agent["name"], llm,
+			model_context=UnboundedChatCompletionContext(this.context) if agent.get("history", False) else None,
 			# model_client_stream=True,
 			reflect_on_tool_use=True,
 			output_content_type=AAA,
@@ -111,18 +116,18 @@ class Group:
 				FunctionTool(this.get_member, "获取某成员的具体信息")
 			],
 			system_message = f"""
-你是一个群聊成员,你的name是“{agent["name"]}”.
-你需要通过name区分发言者,即每条消息前“【】”包含的内容,【name】是系统自动添加的,你无需生成.你要注意别人对你的@,但由你自己视情况决定是否回复@你的人.
-请以JSON格式字符串生成内容,JSON字符串的键名为“@name1@name2”的格式,键值为对该成员的回复内容.如果没有要@的成员即正常对话,则键名为“@_”.
+你是一个群聊成员,你的name是"{agent["name"]}".
+你需要通过name区分发言者,即每条消息前"【】"包含的内容,【name】是系统自动添加的,你无需生成.你要注意别人对你的@,但由你自己视情况决定是否回复@你的人.
+请以JSON格式字符串生成内容,JSON字符串的键名为"@name1@name2"的格式,键值为对该成员的回复内容.如果没有要@的成员即正常对话,则键名为"@__null".
 例如:
 {{
 	"@kax": "又见面了,...",
 	"@locy@jil": "你们今天心情怎么样？...",
-	"@_": "大家做个自我介绍,...",
+	"@__null": "大家做个自我介绍,...",
 }},
 {{
-	"@_": "我今天和同学吃了一顿火锅,..."
-}}.
+	"@__null": "听起来很不错,..."
+}},
 这是额外的系统提示词:{agent["system_message"]}
 """
 		);
@@ -141,7 +146,7 @@ class Group:
 			participants=this.members,
 			name=this.name,
 			custom_message_types=[StructuredMessage[AAA]],
-			selector_func=this.selector_func,
+			selector_func=lambda ms: this.speakers[this.spi],
 			termination_condition=FunctionalTermination(this.termination_function)
 		);
 		if groupchat is not None:
@@ -149,34 +154,22 @@ class Group:
 			state_groupchat["agent_states"].update((a.name,ChatAgentContainerState(agent_state=state)) for a,state in zip(agents, await asyncio.gather(*(a_.save_state() for a_ in agents))));
 			await this.groupchat.load_state(state_groupchat);
 
-		this.speakers = [agent.name for agent in this.members]
-		this.spi = 0;
-
-	def termination_function(this, messages):
-		if messages[-1].source != "user":
-			ks = messages[-1].content.model_dump().keys();
-			for k in ks: this.speakers.extend(filter(lambda n: n != "", k.split("@")));
+	def termination_function(this, response):
+		this.context.append(response[-1]);
+		if response[-1].source != "user":
+			for ats in [filter(lambda n: n != "", ktrings.split("@")) for ktrings in response[-1].content.model_dump().keys()]:
+				for at in ats: this.speakers.append(at);
+		this.spi = this.spi + 1;
 		while True:
-			if this.spi>len(this.speakers)-1:
-				this.speakers = [member.name for member in this.members];
-				this.spi = 0;
-				return True;
-			if this.speakers[this.spi]=="user" or this.speakers[this.spi]=="_": this.spi = this.spi + 1;
+			if this.speakers[this.spi]=="user" or this.spi>len(this.speakers)-1: return True;
+			if this.speakers[this.spi]=="__null":this.spi = this.spi + 1;
 			else: return False;
 
-	def selector_func(this, messages):
-		speaker = this.speakers[this.spi];
-		this.spi = this.spi+1;
-		return speaker;
-
 	def get_members(this)->list[str]:
-		return [agent.name for agent in this.members]+["user"];
+		return ["user"]+[agent.name for agent in this.members];
 
 	async def get_member(this, index:int)->Mapping[str, Any]:
 		return await this.members[index].save_state();
-
-	def get_groupfiles(this)->list[str]:
-		return [agent.name for agent in this.members];
 
 class AAA(BaseModel):
 	model_config = {'extra': 'allow', "strict": False}

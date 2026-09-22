@@ -26,7 +26,7 @@ HTMLElement.prototype.initShadowRoot = function(){
 	this.shadowRoot.adoptedStyleSheets.push(defaultStyleSheet);
 	this.shadowRoot.appendChild(this.template.content.cloneNode(true));
 	this.shadowRoot.querySelectorAll(".fold-trigger").forEach(btn=>btn.addEventListener("click", (e)=>btn.parentElement.classList.toggle("fold")));
-	this.shadowRoot.querySelectorAll(".fold-trigger").forEach(btn=>btn.parentElement.classList.add("fold"));
+	// this.shadowRoot.querySelectorAll(".fold-trigger").forEach(btn=>btn.parentElement.classList.add("fold"));
 }
 
 HTMLElement.prototype.reactiverender = HTMLElement._render(function(rd_merged, render_acquired){

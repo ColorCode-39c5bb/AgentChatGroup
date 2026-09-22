@@ -32,7 +32,7 @@ async def on_group(scope, receive, send):
 		case "POST":
 			g = Group(receive["name"]);
 			groups[receive["name"]] = g;
-			await g.add_member([{"name": "wel", "system_message": "你是本群的一个智能体助手"}, {"name": "boob", "system_message": "你是本群的一个智能体助手"}]);
+			await g.add_member([{"name":"wel","system_message":"你是本群的一个智能体助手","history":True}, {"name":"boob","system_message":"你是本群的一个智能体助手","history":True}]);
 			await send({
 				"type": "http.response.body",
 				"body": b"created successfully!",
@@ -49,7 +49,7 @@ async def on_message(scope, receive, send):
 			if file.file_name:
 				r = requests.post(
 					"https://api.deepseek.com/files",
-					headers={'Authorization': 'Bearer sk-ce3b7eb71209417683ca5280de1ea556'},
+					headers={'Authorization': 'Bearer sk-c978424f879241c6b2523a1c3753b6e2'},
 					files={"file": (file.field_name, file.file_object)},
 					data={"purpose": "user_data"}
 				)
