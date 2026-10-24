@@ -1,13 +1,10 @@
 import templatePromise from "../template.js";
 templatePromise.then((templateDocument)=>{
-	GroupDefault.prototype.template = templateDocument.getElementById("group-default");
+	GroupDefault.template = templateDocument.getElementById("group-default");
 	window.constructor_customelement.push(GroupDefault);
 });
 export default function GroupDefault(){
-	const _this = Reflect.construct(HTMLElement, [], GroupDefault);
-	_this.attachShadow({mode: "open"});
-	_this.initShadowRoot();
-	
+	const _this = Reflect.construct(HTMLElement, [], GroupDefault); _this.initShadowRoot(GroupDefault);
 	const btn_new = _this.shadowRoot.querySelector(".btn-new");
 	const dialog_member_new = _this.shadowRoot.getElementById("member-new");
 	const dialog_detail = _this.shadowRoot.getElementById("detail");
@@ -18,7 +15,7 @@ export default function GroupDefault(){
 	dialog_member_new.addEventListener("close", function(){
 		if(this.returnValue == "N") return;
 		const agent = new FormData(this.firstElementChild);
-		fetch("http://localhost:5000/member?group="+_this.reactivedata.value.name, {
+		fetch("http://localhost:5000/member?group="+_this.reactivedata.datavalue.name, {
 			method: "POST",
 			body: agent
 		})
@@ -32,7 +29,7 @@ export default function GroupDefault(){
 	});
 	_this.shadowRoot.addEventListener("message-send", function(e){
 		if(!e.detail.get("content")) return;
-		fetch("http://localhost:5000/message?group="+_this.reactivedata.value.name, {
+		fetch("http://localhost:5000/message?group="+_this.reactivedata.datavalue.name, {
 			method: "POST",
 			body: e.detail
 		})
@@ -49,8 +46,7 @@ export default function GroupDefault(){
 			console.log("流结束");
 		});
 	});
-
-	_this.els_tooperate={
+	_this.elements_todo={
 		group_name: _this.shadowRoot.getElementById("group-name"),
 		list_message:_this.shadowRoot.getElementById("list-message"),
 			message: _this.shadowRoot.querySelector(".message"),
@@ -61,30 +57,25 @@ export default function GroupDefault(){
 	};
 	return _this;
 }
-Object.setPrototypeOf(GroupDefault.prototype, HTMLElement.prototype);
-Object.setPrototypeOf(GroupDefault, HTMLElement);
-Object.defineProperty(GroupDefault, "observedAttributes", {get: function() {return ["value"]}});
+Object.setPrototypeOf(GroupDefault.prototype, HTMLElement.prototype); Object.setPrototypeOf(GroupDefault, HTMLElement);
+Object.defineProperty(GroupDefault, "observedAttributes", {get: function() {return []}});
 GroupDefault.prototype.connectedCallback = function(){
 }
 GroupDefault.prototype.attributeChangedCallback = function(name, oldValue, newValue){
-	
 }
 GroupDefault.prototype.disconnectedCallback = function(){
-	
 }
 GroupDefault.prototype.adoptedCallback = function(){
-	
 }
-GroupDefault.prototype.reactiverender = function(rd){
-	const {dialog_detail:el_detail, member:el_member, message:el_message, group_name:el_group_name} = this.els_tooperate;
-	if(rd.fetch)
-		return fetch("http://localhost:5000/group?name="+rd.fetch.name)
+GroupDefault.prototype.reactiverender = function(delta){
+	const {dialog_detail:el_detail, member:el_member, message:el_message, group_name:el_group_name}=this.elements_todo;  const rd=this.reactivedata.datavalue;
+	if(delta.group_torender)
+		return fetch("http://localhost:5000/group?name="+rd.group_torender.name)
 		.then(rep=>rep.json())
-		.then(group=>this.reactiverender(Object.defineProperties(group, {i_f: FALSE, isprimary: TRUE})));
-
-	if(rd.name)
+		.then(group=>this.reactiverender(Object.defineProperties(group, {mergemode: FALSE, isprimary: TRUE})));
+	if(delta.name)
 		el_group_name.innerHTML = rd.name;
-	
+	if(delta.agent_states)
 	el_message.reactiverender_for(rd.agent_states["SelectorGroupChatManager"].message_thread, function(rd_message){
 		this.firstElementChild.reactiverender({source: rd_message.source});
 		const el_content = this.querySelector(".message-content");
@@ -118,6 +109,7 @@ GroupDefault.prototype.reactiverender = function(rd){
 			this.innerHTML = Object.entries(rd_content).reduce((p, [at, content])=>p + at+","+content+"\n", "");
 		});
 	});
+
 	el_detail.reactiverender(rd, function(rd){
 		Object.entries(rd).forEach(function([k, v]){
 			const e=this.querySelector(`label[name="${k}"]`)?.firstElementChild;
@@ -130,27 +122,21 @@ GroupDefault.prototype.reactiverender = function(rd){
 	});
 }
 
-GroupDefault.prototype.RDCLASS = function(){
+GroupDefault.RDCLASS = function(){
 	this.construction = {
-		i_f: true,
-		fetch: {
-			i_f: false,
-			isprimary: true
-		},
-		//name: {},
+		mergemode: true, isprimary: false,
 		agent_states: {
-			i_f: true,
+			mergemode: true, isprimary: false,
 			"SelectorGroupChatManager": {
-				i_f: true,
+				mergemode: true, isprimary: false,
 				message_thread: {
-					i_f: true
+					mergemode: true
 				}
 			}
 		},
-		manager_state: {
-			i_f: false,
-			isprimary: true,
-		},
+		data_default: {
+
+		}
 	};
 	return this;
 }

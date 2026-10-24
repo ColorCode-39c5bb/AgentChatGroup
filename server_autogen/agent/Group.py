@@ -59,7 +59,7 @@ register_transformer("openai", "deepseek-flash",{
 
 llm = OpenAIChatCompletionClient(
 	model="deepseek-flash",
-	api_key="sk-c978424f879241c6b2523a1c3753b6e2",
+	api_key="sk-d0662866c7824cf7b2c5975fe2990ffb",
 	base_url="https://api.deepseek.com",
 	model_info={
 		"vision": True,
@@ -87,7 +87,6 @@ class Group:
 		this.members:list[BaseChatAgent] = []; ##[UserProxyAgent("user", input_func=input_func)];
 		this.speakers = ["user"]; this.spi = 0;
 		this.context = [];
-		this.shutup = [];
 
 
 	async def __call__(this,
@@ -161,8 +160,8 @@ class Group:
 				for at in ats: this.speakers.append(at);
 		this.spi = this.spi + 1;
 		while True:
-			if this.speakers[this.spi]=="user" or this.spi>len(this.speakers)-1: return True;
-			if this.speakers[this.spi]=="__null":this.spi = this.spi + 1;
+			if this.spi>len(this.speakers)-1 or this.speakers[this.spi]=="user": return True;
+			if this.speakers[this.spi]=="__null": this.spi = this.spi + 1;
 			else: return False;
 
 	def get_members(this)->list[str]:
@@ -172,4 +171,4 @@ class Group:
 		return await this.members[index].save_state();
 
 class AAA(BaseModel):
-	model_config = {'extra': 'allow', "strict": False}
+	model_config = {'extra': 'allow', "strict": False};

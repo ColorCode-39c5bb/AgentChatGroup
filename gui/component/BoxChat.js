@@ -1,13 +1,10 @@
 import templatePromise from "../template.js";
 templatePromise.then((templateDocument)=>{
-	BoxChat.prototype.template = templateDocument.getElementById("box-chat");
+	BoxChat.template = templateDocument.getElementById("box-chat");
 	window.constructor_customelement.push(BoxChat);
 });
 export default function BoxChat(){
-	const _this = Reflect.construct(HTMLElement, [], BoxChat);
-	_this.attachShadow({mode: "open"});
-	_this.initShadowRoot();
-	
+	const _this = Reflect.construct(HTMLElement, [], BoxChat); _this.initShadowRoot(BoxChat);
 	const form = _this.shadowRoot.querySelector("form");
 	form.addEventListener("submit", function(e){
 		e.preventDefault();
@@ -17,24 +14,30 @@ export default function BoxChat(){
 		}));
 		Array.from(this.elements).forEach(el=>el.value = "");
 	});
-
-	_this.els_tooperate={
+	_this.elements_todo={
 		form,
 	};
 	return _this;
 }
-Object.setPrototypeOf(BoxChat.prototype, HTMLElement.prototype);
-Object.setPrototypeOf(BoxChat, HTMLElement);
-Object.defineProperty(BoxChat, "observedAttributes", {get: function() {return ["value"]}});
+Object.setPrototypeOf(BoxChat.prototype, HTMLElement.prototype); Object.setPrototypeOf(BoxChat, HTMLElement);
+Object.defineProperty(BoxChat, "observedAttributes", {get: function() {return []}});
 BoxChat.prototype.connectedCallback = function(){
-	
 }
 BoxChat.prototype.attributeChangedCallback = function(name, oldValue, newValue){
-	
 }
 BoxChat.prototype.disconnectedCallback = function(){
-	
 }
 BoxChat.prototype.adoptedCallback = function(){
-	
 }
+//BoxChat.prototype.reactiverender = function(delta){
+//	const {}=this.elements_todo;  const rd=this.reactivedata.datavalue;
+//
+//}
+
+//BoxChat.RDCLASS = function(){
+//	this.construction = {
+//		mergemode: "mode_incremental", isprimary: false,
+//		
+//	};
+//	return this;
+//}
