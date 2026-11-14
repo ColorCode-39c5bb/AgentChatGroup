@@ -3,60 +3,144 @@ Agent不会产出StopMesssage，StopMessage都是Manager创建并且都会调用
 
 
 class GroupManager
-    handle_agent_response(){
-        if(_apply_termination_condition) retrun
-        else _transition_to_next_speakers()
-    }
+	handle_agent_response(){
+		if(_apply_termination_condition) retrun
+		else _transition_to_next_speakers()
+	}
 
-    _apply_termination_condition(message){
-        if self._termination_condition is not None: return;
-            await self._termination_condition.reset()
-            self._current_turn = 0
-            await self._signal_termination(stop_message)
-        if self._current_turn >= self._max_turns:
-            stop_message = StopMessage(
-                content=f"Maximum number of turns {self._max_turns} reached.",
-                source=self._name,
-            )
-    }
+	_apply_termination_condition(message){
+		if self._termination_condition is not None: return;
+			await self._termination_condition.reset()
+			self._current_turn = 0
+			await self._signal_termination(stop_message)
+		if self._current_turn >= self._max_turns:
+			stop_message = StopMessage(
+				content=f"Maximum number of turns {self._max_turns} reached.",
+				source=self._name,
+			)
+	}
 
-    _transition_to_next_speakers(){
-        await self.publish_message(
-            GroupChatRequestPublish(),
-            topic_id=DefaultTopicId(type=speaker_topic_type),
-            cancellation_token=cancellation_token,
-        )
-    }
+	_transition_to_next_speakers(){
+		await self.publish_message(
+			GroupChatRequestPublish(),
+			topic_id=DefaultTopicId(type=speaker_topic_type),
+			cancellation_token=cancellation_token,
+		)
+	}
 
-    async def _signal_termination(self, message: StopMessage) -> None:
-        await self.publish_message(
-            GroupChatTermination(message=message),
-            topic_id=DefaultTopicId(type=self._output_topic_type)
-        )
+	async def _signal_termination(self, message: StopMessage) -> None:
+		await self.publish_message(
+			GroupChatTermination(message=message),
+			topic_id=DefaultTopicId(type=self._output_topic_type)
+		)
 
-    handle_group_chat_message(){
-        await self._output_message_queue.put(message.message)
-    }
+	handle_group_chat_message(){
+		await self._output_message_queue.put(message.message)
+	}
 
 
 class Container
-    handle_request(GroupChatRequestPublish){
-        for agent.on_messages_stream(){
-            if isinstance(msg, Response):
-                await self._log_message(msg.chat_message)
-                response = msg
-            else:
-                await self._log_message(msg)
-        }
-    }
+	handle_request(GroupChatRequestPublish){
+		for agent.on_messages_stream(){
+			if isinstance(msg, Response):
+				await self._log_message(msg.chat_message)
+				response = msg
+			else:
+				await self._log_message(msg)
+		}
+	}
 
-    _log_message(message){
-        public(message)
-    }
+	_log_message(message){
+		public(message)
+	}
 
 
 
 class ChatAgent
-    on_messages_stream(){
-        yield Event|Reponse(TextMessage)
-    }
+	on_messages_stream(){
+		yield Event|Reponse(TextMessage)
+	}
+
+
+
+
+BaseGroupChat:
+async def run_stream(){
+	await self._runtime.send_message(
+		GroupChatStart(messages=messages, output_task_messages=output_task_messages),
+		recipient=AgentId(type=self._group_chat_manager_topic_type, key=self._team_id),
+		cancellation_token=cancellation_token,
+	)
+}
+->
+BaseGroupChatManager:
+async def handle_start(self, message: GroupChatStart, ctx: MessageContext){
+	await self._transition_to_next_speakers(ctx.cancellation_token)(){
+		await self.publish_message(
+			GroupChatRequestPublish(),
+			topic_id=DefaultTopicId(type=speaker_topic_type),
+			cancellation_token=cancellation_token,
+		)
+	}
+}
+->
+ChatAgentContainer:
+async def handle_request(self, message: GroupChatRequestPublish, ctx: MessageContext) -> None:{
+	async for msg in self._agent.on_messages_stream(self._message_buffer, ctx.cancellation_token):
+		if isinstance(msg, Response):
+			await self._log_message(msg.chat_message)
+			response = msg
+		else:
+			await self._log_message(msg)
+	if response is None:
+		raise RuntimeError(
+			"The agent did not produce a final response. Check the agent's on_messages_stream method."
+		)
+	# Publish the response to the group chat.
+	self._message_buffer.clear()
+	await self.publish_message(
+		GroupChatAgentResponse(response=response, name=self._agent.name),
+		topic_id=DefaultTopicId(type=self._parent_topic_type),
+		cancellation_token=ctx.cancellation_token,
+	)
+}
+
+
+
+
+Runtime{
+	_process_publish(){
+		await asyncio.gather(for async _on_message(subscriber_agent){
+			await agent.on_message(){
+				agent_container: handler_request(){
+					this.chatagent.on_message(){
+						for yield _process_model_result(){
+							for yield call_llm(){
+								for yield this.model_client.create_stream(){
+									asyncio.ensure_future(create());
+									logger.info();
+								}
+							}
+						}
+					};
+                    await self.publish_message(
+                        GroupChatAgentResponse(response=response, name=self._agent.name),
+                        topic_id=DefaultTopicId(type=self._parent_topic_type),
+                        cancellation_token=ctx.cancellation_token,
+                    );
+				}
+				group_manager: handle_agent_response(){
+					_apply_termination_condition();
+					_transition_to_next_speakers(){
+						await asyncio.ensure_future(select_speaker());
+			            await self.publish_message(
+			                GroupChatRequestPublish(),
+			                topic_id=DefaultTopicId(type=speaker_topic_type),
+			                cancellation_token=cancellation_token,
+			            );
+					};
+				}
+			}
+		});
+	}
+}

@@ -77,6 +77,7 @@ GroupDefault.prototype.reactiverender = function(delta){
 		el_group_name.innerHTML = rd.name;
 	if(delta.agent_states)
 	el_message.reactiverender_for(rd.agent_states["SelectorGroupChatManager"].message_thread, function(rd_message){
+		rd_message=rd_message[0];
 		this.firstElementChild.reactiverender({source: rd_message.source});
 		const el_content = this.querySelector(".message-content");
 		if(rd_message.source == "user"){
@@ -88,19 +89,23 @@ GroupDefault.prototype.reactiverender = function(delta){
 			}
 		}else{
 			this.classList.add("message-that"); this.classList.remove("message-this");
-			if(rd_message.type == "ToolCallRequestEvent"){
+			switch(rd_message.type){
+			case "ToolCallRequestEvent":
 				this.classList.add("message-multi");
 				el_content.reactiverender_for([
 					"请求工具：",
 					rd_message.content.reduce((prev, cur)=>prev+cur.name+"、", ""),
 				], function(rd_content){this.innerHTML = rd_content;});
 				return;
-			}else if(rd_message.type == "ToolCallExecutionEvent"){
+			case "ToolCallExecutionEvent":
 				this.classList.add("message-multi");
 				el_content.reactiverender_for(rd_message.content, function(function_call){
 					this.innerHTML = `${function_call.name} -> ${function_call.content}`;
 				});
 				return;
+			case "SelectSpeakerEvent":
+				console.log(rd_message);
+				break;
 			}
 		}
 		this.classList.remove("message-multi");

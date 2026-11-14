@@ -7,6 +7,7 @@ from autogen_agentchat.conditions import FunctionalTermination
 from autogen_agentchat.messages import BaseChatMessage, BaseAgentEvent, MultiModalMessage, StructuredMessage
 from autogen_agentchat.state import ChatAgentContainerState
 from autogen_agentchat.teams import SelectorGroupChat
+from autogen_core import SingleThreadedAgentRuntime
 from autogen_core.model_context import UnboundedChatCompletionContext
 from autogen_core.models import UserMessage, LLMMessage, AssistantMessage
 from autogen_core.tools import FunctionTool
@@ -14,7 +15,6 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_ext.models.openai._message_transform import user_condition, base_user_transformer_funcs, _set_name, user_transformer_constructors, __BASE_TRANSFORMER_MAP
 from autogen_ext.models.openai._transformation import register_transformer, build_conditional_transformer_func
 from openai.types.chat import ChatCompletionContentPartParam, ChatCompletionContentPartTextParam
-from pydantic import BaseModel
 
 
 class ChatCompletionContentPartFileIDParam(dict):
@@ -28,38 +28,35 @@ def multimodal(message: LLMMessage, context: dict) -> dict[str, list[ChatComplet
 	parts: list[ChatCompletionContentPartParam|ChatCompletionContentPartFileIDParam] = [];
 	for idx, part in enumerate(message.content):
 		if isinstance(part, str) and part.startswith("file-api-"):
-			parts.append(ChatCompletionContentPartFileIDParam(type="file", file_id=part))
+			parts.append(ChatCompletionContentPartFileIDParam(type="file", file_id=part));
 		elif isinstance(part, str):
 			# If prepend, Append the name to the first text part
-			part = f"【{message.source}】"+part if prepend and idx == 0 else part
-			parts.append(ChatCompletionContentPartTextParam(type="text", text=part))
+			part = f"【{message.source}】"+part if prepend and idx == 0 else part;
+			parts.append(ChatCompletionContentPartTextParam(type="text", text=part));
 		else:
-			raise ValueError(f"Unknown content part: {part}")
+			raise ValueError(f"Unknown content part: {part}");
 	return {"content": parts}
 def text(message: LLMMessage, context: dict[str, Any]) -> dict[str, str]:
-	assert isinstance(message, (UserMessage, AssistantMessage))
-	assert isinstance(message.content, str)
-	prepend = context.get("prepend_name", False)
-	prefix = f"【{message.source}】" if prepend else ""
-	return {"content": prefix + message.content}
+	assert isinstance(message, (UserMessage, AssistantMessage));
+	assert isinstance(message.content, str);
+	prepend = context.get("prepend_name", False);
+	prefix = f"【{message.source}】" if prepend else "";
+	return {"content": prefix + message.content};
 
-register_transformer("openai", "deepseek-flash",{
-	**__BASE_TRANSFORMER_MAP,
-	**{
-		UserMessage: build_conditional_transformer_func(
-			funcs_map={
-				"text": base_user_transformer_funcs+[_set_name, text],
-				"multimodal": base_user_transformer_funcs+[_set_name, multimodal],
-			},
-			message_param_func_map=user_transformer_constructors,
-			condition_func=user_condition,
-		)
-	}
-})
+register_transformer("openai", "deepseek-flash", {**__BASE_TRANSFORMER_MAP, **{
+	UserMessage: build_conditional_transformer_func(
+		funcs_map={
+			"text": base_user_transformer_funcs+[_set_name, text],
+			"multimodal": base_user_transformer_funcs+[_set_name, multimodal],
+		},
+		message_param_func_map=user_transformer_constructors,
+		condition_func=user_condition,
+	)
+}});
 
 llm = OpenAIChatCompletionClient(
 	model="deepseek-flash",
-	api_key="sk-d0662866c7824cf7b2c5975fe2990ffb",
+	api_key="sk-6ad1b3b99fd44ba9b9063f693a1cf3ab",
 	base_url="https://api.deepseek.com",
 	model_info={
 		"vision": True,
@@ -73,11 +70,26 @@ llm = OpenAIChatCompletionClient(
 _process_create_args = llm._process_create_args;
 llm._process_create_args = lambda a,b,c,d,e: _process_create_args(a,b,c,True,e);
 
+
+import logging
+from autogen_core import EVENT_LOGGER_NAME
+from autogen_core.logging import LLMCallEvent
+class LLMEventHandler(logging.Handler):
+	def emit(self, record):
+		if isinstance(record.msg, LLMCallEvent):
+			#由于gourp和gourp_manager不是同步流（BaseGroupChat:549），如果有多个speaker并发，会根据实际llm_call（BaseOpenAIChatCompletionClient:704）返回response的顺序覆盖，所以selector_func选择返回单人
+			TeamId_LLMResponse[record.msg.kwargs["agent_id"].split("/")[1]] = record.msg.kwargs["response"];
+
+logger = logging.getLogger(EVENT_LOGGER_NAME);
+logger.addHandler(LLMEventHandler());
+logger.setLevel(logging.INFO);
+TeamId_LLMResponse: dict[str, dict]={};
 class Group:
 	def __init__(this,
 		name:str,
 	):
 		this.name = name;
+		this.runtime = SingleThreadedAgentRuntime(); this.runtime.start();
 		this.groupchat = None;
 
 		# async def input_func(prompt:str, cancellation_token=None):
@@ -85,31 +97,38 @@ class Group:
 		# 	return await this.user_input;
 		# this.user_input:Future[str]|None = None;
 		this.members:list[BaseChatAgent] = []; ##[UserProxyAgent("user", input_func=input_func)];
-		this.speakers = ["user"]; this.spi = 0;
-		this.context = [];
+		this.history_speakers = ["user"]; this.hsi = 0;
+		this.response_thread = [];
+		this.history_context = [];
 
 
 	async def __call__(this,
 		message: str|MultiModalMessage,
-	) -> AsyncGenerator[BaseAgentEvent | BaseChatMessage | TaskResult, None]:
-		this.speakers = this.get_members(); this.spi = 0;
-		async for m in this.groupchat.run_stream(task=message): yield m;
+	) -> AsyncGenerator[tuple[BaseAgentEvent|BaseChatMessage, dict], None]:
+		this.history_speakers = this.get_members(); this.hsi = 0;
+		async for m in this.groupchat.run_stream(task=message):
+			LLMResponse = TeamId_LLMResponse.get(this.groupchat._team_id, None);
+			TeamId_LLMResponse[this.groupchat._team_id] = None;
+			if type(m) == TaskResult: return;
+			this.response_thread.append(LLMResponse);
+			yield m.dump(), LLMResponse;
 
 	async def save_state(this):
 		if this.groupchat is None: return {"agent_states": {}};
 		state = await this.groupchat.save_state();
 		state.update({
-			"name": this.name
+			"name": this.name,
 		});
+		state["agent_states"]["SelectorGroupChatManager"]["message_thread"] = list(zip(state["agent_states"]["SelectorGroupChatManager"]["message_thread"], this.response_thread));
 		return state;
 
 	async def add_member(this, agents):
 		for i,agent in enumerate(agents): agents[i] = AssistantAgent(
 			agent["name"], llm,
-			model_context=UnboundedChatCompletionContext(this.context) if agent.get("history", False) else None,
+			model_context=UnboundedChatCompletionContext(this.history_context) if agent.get("history", False) else None,
 			# model_client_stream=True,
 			reflect_on_tool_use=True,
-			output_content_type=AAA,
+			output_content_type=AtName_Content,
 			tools=[
 				FunctionTool(this.get_members, "获取群聊所有成员"),
 				FunctionTool(this.get_member, "获取某成员的具体信息")
@@ -141,11 +160,12 @@ class Group:
 		# 	# max_turns=len(this.members),
 		# );
 		this.groupchat = SelectorGroupChat(
+			runtime=this.runtime,
 			model_client=llm,
 			participants=this.members,
 			name=this.name,
-			custom_message_types=[StructuredMessage[AAA]],
-			selector_func=lambda ms: this.speakers[this.spi],
+			custom_message_types=[StructuredMessage[AtName_Content]],
+			selector_func=lambda ms: this.history_speakers[this.hsi],
 			termination_condition=FunctionalTermination(this.termination_function)
 		);
 		if groupchat is not None:
@@ -154,14 +174,14 @@ class Group:
 			await this.groupchat.load_state(state_groupchat);
 
 	def termination_function(this, response):
-		this.context.append(response[-1]);
+		this.history_context.append(response[-1]);
 		if response[-1].source != "user":
 			for ats in [filter(lambda n: n != "", ktrings.split("@")) for ktrings in response[-1].content.model_dump().keys()]:
-				for at in ats: this.speakers.append(at);
-		this.spi = this.spi + 1;
+				for at in ats: this.history_speakers.append(at);
+		this.hsi = this.hsi + 1;
 		while True:
-			if this.spi>len(this.speakers)-1 or this.speakers[this.spi]=="user": return True;
-			if this.speakers[this.spi]=="__null": this.spi = this.spi + 1;
+			if this.hsi>len(this.history_speakers)-1 or this.history_speakers[this.hsi]=="user": return True;
+			if this.history_speakers[this.hsi]=="__null": this.hsi = this.hsi + 1;
 			else: return False;
 
 	def get_members(this)->list[str]:
@@ -170,5 +190,6 @@ class Group:
 	async def get_member(this, index:int)->Mapping[str, Any]:
 		return await this.members[index].save_state();
 
-class AAA(BaseModel):
+from pydantic import BaseModel
+class AtName_Content(BaseModel):
 	model_config = {'extra': 'allow', "strict": False};

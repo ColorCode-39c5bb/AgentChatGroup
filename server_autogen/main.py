@@ -2,7 +2,6 @@ import json
 
 import requests
 import uvicorn
-from autogen_agentchat.base import Response, TaskResult
 from autogen_agentchat.messages import UserInputRequestedEvent, MultiModalMessage
 
 from agent.Group import Group
@@ -49,20 +48,19 @@ async def on_message(scope, receive, send):
 			if file.file_name:
 				r = requests.post(
 					"https://api.deepseek.com/files",
-					headers={'Authorization': 'Bearer sk-c978424f879241c6b2523a1c3753b6e2'},
+					headers={'Authorization': 'Bearer sk-6ad1b3b99fd44ba9b9063f693a1cf3ab'},
 					files={"file": (file.field_name, file.file_object)},
 					data={"purpose": "user_data"}
 				)
 				message = MultiModalMessage(content=[message, r.json()["id"]], source="user");
-			async for m in groups[scope["query"]["group"]](message):
-				if type(m) == TaskResult: break;
-				if type(m) == Response: m = m.chat_massage;
+			group = groups[scope["query"]["group"]];
+			async for message_with_response in group(message):
 				await send({
 					"type": "http.response.body",
-					"body": (json.dumps(m.dump()) + "\n").encode(),
+					"body": (json.dumps(message_with_response) + "\n").encode(),
 					"more_body": True
 				});
-				if type(m) == UserInputRequestedEvent: break;
+				if type(message_with_response) == UserInputRequestedEvent: break;
 		case "GET":
 			pass;
 	await send({
