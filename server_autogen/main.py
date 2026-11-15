@@ -23,7 +23,6 @@ async def on_group(scope, receive, send):
 	match scope["method"]:
 		case "GET":
 			group = groups[scope["query"]["name"]];
-			state = await group.save_state();
 			await send({
 				"type": "http.response.body",
 				"body": json.dumps(await group.save_state()).encode(),
@@ -36,11 +35,16 @@ async def on_group(scope, receive, send):
 				"type": "http.response.body",
 				"body": b"created successfully!",
 			});
+		case "DELETE":
+			del groups[scope["query"]["name"]];
+			await send({
+				"type": "http.response.body",
+				"body": b"deleted successfully!",
+			});
 
 
 @path("/message")
 async def on_message(scope, receive, send):
-	print(receive);
 	match scope["method"]:
 		case "POST":
 			file = receive.get("file", None);
@@ -48,21 +52,18 @@ async def on_message(scope, receive, send):
 			if file.file_name:
 				r = requests.post(
 					"https://api.deepseek.com/files",
-					headers={'Authorization': 'Bearer sk-6ad1b3b99fd44ba9b9063f693a1cf3ab'},
+					headers={'Authorization': 'Bearer sk-c4f776eb11e94e0d8bb66144d4dc7be1'},
 					files={"file": (file.field_name, file.file_object)},
 					data={"purpose": "user_data"}
 				)
-				message = MultiModalMessage(content=[message, r.json()["id"]], source="user");
-			group = groups[scope["query"]["group"]];
-			async for message_with_response in group(message):
+				message = MultiModalMessage(content=[message, r.json()["id"]], source="user"); # TODO 多文件处理
+			async for message_with_response in groups[scope["query"]["group"]](message):
 				await send({
 					"type": "http.response.body",
 					"body": (json.dumps(message_with_response) + "\n").encode(),
 					"more_body": True
 				});
 				if type(message_with_response) == UserInputRequestedEvent: break;
-		case "GET":
-			pass;
 	await send({
 		"type": "http.response.body",
 		"body": b"",
@@ -71,11 +72,12 @@ async def on_message(scope, receive, send):
 
 @path("/member")
 async def on_member(scope, receive, send):
-	print(receive);
 	group = groups[scope["query"]["group"]];
 	match scope["method"]:
 		case "POST":
 			await group.add_member([receive]);
+		case "DELETE":
+			await group.delete_member([receive]);
 
 	await send({
 		"type": "http.response.body",

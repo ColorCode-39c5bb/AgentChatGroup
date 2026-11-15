@@ -4,10 +4,11 @@ templatePromise.then((templateDocument)=>{
 	window.constructor_customelement.push(GroupDefault);
 });
 export default function GroupDefault(){
-	const _this = Reflect.construct(HTMLElement, [], GroupDefault); _this.initShadowRoot(GroupDefault);
+	const _this = Reflect.construct(HTMLElement, [], GroupDefault);
+	_this.initShadowRoot(GroupDefault);
+
 	const btn_new = _this.shadowRoot.querySelector(".btn-new");
 	const dialog_member_new = _this.shadowRoot.getElementById("member-new");
-	const dialog_detail = _this.shadowRoot.getElementById("detail");
 
 	btn_new.addEventListener("click", function(){
 		dialog_member_new.showModal();
@@ -18,8 +19,7 @@ export default function GroupDefault(){
 		fetch("http://localhost:5000/member?group="+_this.reactivedata.datavalue.name, {
 			method: "POST",
 			body: agent
-		})
-		// .then(rep=>rep.json())
+		})//.then(rep=>rep.json())
 		.then(rep=>{
 			_this.reactiverender({agent_states: Object.fromEntries([
 				[agent.get("name"), {}]
@@ -46,11 +46,12 @@ export default function GroupDefault(){
 			console.log("流结束");
 		});
 	});
+
 	_this.elements_todo={
 		group_name: _this.shadowRoot.getElementById("group-name"),
 		list_message:_this.shadowRoot.getElementById("list-message"),
 			message: _this.shadowRoot.querySelector(".message"),
-		dialog_detail,
+		dialog_detail: _this.shadowRoot.getElementById("detail"),
 			list_member:_this.shadowRoot.getElementById("list-member"),
 				dialog_member_new,
 				member: _this.shadowRoot.querySelector(".member"),
@@ -59,63 +60,55 @@ export default function GroupDefault(){
 }
 Object.setPrototypeOf(GroupDefault.prototype, HTMLElement.prototype); Object.setPrototypeOf(GroupDefault, HTMLElement);
 Object.defineProperty(GroupDefault, "observedAttributes", {get: function() {return []}});
-GroupDefault.prototype.connectedCallback = function(){
-}
-GroupDefault.prototype.attributeChangedCallback = function(name, oldValue, newValue){
-}
-GroupDefault.prototype.disconnectedCallback = function(){
-}
-GroupDefault.prototype.adoptedCallback = function(){
-}
-GroupDefault.prototype.reactiverender = function(delta){
-	const {dialog_detail:el_detail, member:el_member, message:el_message, group_name:el_group_name}=this.elements_todo;  const rd=this.reactivedata.datavalue;
-	if(delta.group_torender)
-		return fetch("http://localhost:5000/group?name="+rd.group_torender.name)
-		.then(rep=>rep.json())
-		.then(group=>this.reactiverender(Object.defineProperties(group, {mergemode: FALSE, isprimary: TRUE})));
-	if(delta.name)
-		el_group_name.innerHTML = rd.name;
-	if(delta.agent_states)
-	el_message.reactiverender_for(rd.agent_states["SelectorGroupChatManager"].message_thread, function(rd_message){
-		rd_message=rd_message[0];
-		this.firstElementChild.reactiverender({source: rd_message.source});
-		const el_content = this.querySelector(".message-content");
-		if(rd_message.source == "user"){
-			this.classList.add("message-this"); this.classList.remove("message-that");
-			if(rd_message.type == "MultiModalMessage"){
-				this.classList.add("message-multi");
-				el_content.reactiverender_for(rd_message.content, function(rd_content){this.innerHTML = rd_content;});
-				return;
+GroupDefault.prototype.connectedCallback = function(){}
+GroupDefault.prototype.attributeChangedCallback = function(name, oldValue, newValue){}
+GroupDefault.prototype.disconnectedCallback = function(){}
+GroupDefault.prototype.adoptedCallback = function(){}
+GroupDefault.prototype.reactiverender = function(delta, value){
+	const {dialog_detail:el_detail, member:el_member, message:el_message, group_name:el_group_name}=this.elements_todo;
+	if(delta.name_torender){
+		el_group_name.innerHTML = value.name_torender;
+		return fetch("http://localhost:5000/group?name="+value.name_torender).then(rep=>rep.json())
+		.then(group=>this.reactiverender(Object.defineProperty(group, "isprimary", {value:true, enumerable:false})));
+	}
+	if(delta.agent_states["SelectorGroupChatManager"]?.message_thread){
+		el_message.reactiverender_for(value.agent_states["SelectorGroupChatManager"].message_thread, function(delta){
+			const message=delta[0], llm_response=delta[1];
+			this.firstElementChild.reactiverender({source: message.source});
+			this.classList.remove("message-multi");
+			const el_content = this.querySelector(".message-content");
+			if(message.source == "user"){
+				this.classList.add("message-this"); this.classList.remove("message-that");
+				if(message.type == "MultiModalMessage"){
+					this.classList.add("message-multi");
+					el_content.reactiverender_for(message.content, function(delta){this.innerHTML = delta;});
+					return;
+				}
+			}else{
+				this.classList.add("message-that"); this.classList.remove("message-this");
+				switch(message.type){
+				case "ToolCallRequestEvent":
+					el_content.reactiverender_for(["请求工具："+message.content.reduce((prev, cur)=>prev+cur.name+"、", "")], function(function_request){this.innerHTML = function_request;});
+					return;
+				case "ToolCallExecutionEvent":
+					this.classList.add("message-multi");
+					el_content.reactiverender_for(message.content, function(function_call_result){
+						this.innerHTML = `${function_call_result.name} -> ${function_call_result.content}`;
+					});
+					return;
+				case "SelectSpeakerEvent":
+					console.log(message);
+					break;
+				}
 			}
-		}else{
-			this.classList.add("message-that"); this.classList.remove("message-this");
-			switch(rd_message.type){
-			case "ToolCallRequestEvent":
-				this.classList.add("message-multi");
-				el_content.reactiverender_for([
-					"请求工具：",
-					rd_message.content.reduce((prev, cur)=>prev+cur.name+"、", ""),
-				], function(rd_content){this.innerHTML = rd_content;});
-				return;
-			case "ToolCallExecutionEvent":
-				this.classList.add("message-multi");
-				el_content.reactiverender_for(rd_message.content, function(function_call){
-					this.innerHTML = `${function_call.name} -> ${function_call.content}`;
-				});
-				return;
-			case "SelectSpeakerEvent":
-				console.log(rd_message);
-				break;
-			}
-		}
-		this.classList.remove("message-multi");
-		el_content.reactiverender_for([rd_message.content], function(rd_content){
-			if(typeof rd_content == "string") return this.innerHTML = rd_content;
-			this.innerHTML = Object.entries(rd_content).reduce((p, [at, content])=>p + at+","+content+"\n", "");
+			//ChatMessage
+			el_content.reactiverender_for([message.content], function(message_content){
+				if(typeof message_content == "string") return this.innerHTML = message_content; //user
+				this.innerHTML = Object.entries(message_content).reduce((p, [at, content])=>p + at+","+content+"\n", ""); //agent
+			});
 		});
-	});
-
-	el_detail.reactiverender(rd, function(rd){
+	}
+	el_detail.reactiverender(value, function(rd){
 		Object.entries(rd).forEach(function([k, v]){
 			const e=this.querySelector(`label[name="${k}"]`)?.firstElementChild;
 			if(e) e.innerHTML=v;
@@ -128,20 +121,14 @@ GroupDefault.prototype.reactiverender = function(delta){
 }
 
 GroupDefault.RDCLASS = function(){
-	this.construction = {
-		mergemode: true, isprimary: false,
-		agent_states: {
-			mergemode: true, isprimary: false,
-			"SelectorGroupChatManager": {
-				mergemode: true, isprimary: false,
+	this.construction = { isprimary: false,
+		agent_states: { isprimary: false,
+			"SelectorGroupChatManager": { isprimary: false,
 				message_thread: {
-					mergemode: true
+					isprimary: false,
 				}
 			}
 		},
-		data_default: {
-
-		}
 	};
 	return this;
 }

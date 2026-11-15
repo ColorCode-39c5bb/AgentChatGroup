@@ -22,6 +22,7 @@ class ChatCompletionContentPartFileIDParam(dict):
 	type: Literal["file"]
 	prompt_cache_breakpoint = None
 
+# TODO 2026-11-15 DeepSeek多模态消息接口已更新
 def multimodal(message: LLMMessage, context: dict) -> dict[str, list[ChatCompletionContentPartParam|ChatCompletionContentPartFileIDParam]]:
 	assert isinstance(message, (UserMessage, AssistantMessage))
 	prepend = context.get("prepend_name", False);
@@ -56,7 +57,7 @@ register_transformer("openai", "deepseek-flash", {**__BASE_TRANSFORMER_MAP, **{
 
 llm = OpenAIChatCompletionClient(
 	model="deepseek-flash",
-	api_key="sk-6ad1b3b99fd44ba9b9063f693a1cf3ab",
+	api_key="sk-c4f776eb11e94e0d8bb66144d4dc7be1",
 	base_url="https://api.deepseek.com",
 	model_info={
 		"vision": True,
@@ -89,7 +90,7 @@ class Group:
 		name:str,
 	):
 		this.name = name;
-		this.runtime = SingleThreadedAgentRuntime(); this.runtime.start();
+		#this.runtime = SingleThreadedAgentRuntime(); this.runtime.start();
 		this.groupchat = None;
 
 		# async def input_func(prompt:str, cancellation_token=None):
@@ -122,6 +123,29 @@ class Group:
 		state["agent_states"]["SelectorGroupChatManager"]["message_thread"] = list(zip(state["agent_states"]["SelectorGroupChatManager"]["message_thread"], this.response_thread));
 		return state;
 
+	async def update_groupchat(this, agents):
+		groupchat = this.groupchat;
+		# this.groupchat = RoundRobinGroupChat(
+		# 	this.members,
+		# 	name=this.name,
+		# 	termination_condition=MaxMessageTermination(len(this.members)+1, False),
+		# 	custom_message_types=[StructuredMessage[AAA]]
+		# 	# max_turns=len(this.members),
+		# );
+		this.groupchat = SelectorGroupChat(
+			#runtime=this.runtime,
+			model_client=llm,
+			participants=this.members,
+			name=this.name,
+			custom_message_types=[StructuredMessage[AtName_Content]],
+			selector_func=lambda ms: this.history_speakers[this.hsi],
+			termination_condition=FunctionalTermination(this.termination_function)
+		);
+		if groupchat is not None:
+			state_groupchat = await groupchat.save_state();
+			state_groupchat["agent_states"].update((a.name,ChatAgentContainerState(agent_state=state)) for a,state in zip(agents, await asyncio.gather(*(a_.save_state() for a_ in agents))));
+			await this.groupchat.load_state(state_groupchat);
+
 	async def add_member(this, agents):
 		for i,agent in enumerate(agents): agents[i] = AssistantAgent(
 			agent["name"], llm,
@@ -150,33 +174,16 @@ class Group:
 """
 		);
 		this.members.extend(agents);
+		await this.update_groupchat(this.members);
 
-		groupchat = this.groupchat;
-		# this.groupchat = RoundRobinGroupChat(
-		# 	this.members,
-		# 	name=this.name,
-		# 	termination_condition=MaxMessageTermination(len(this.members)+1, False),
-		# 	custom_message_types=[StructuredMessage[AAA]]
-		# 	# max_turns=len(this.members),
-		# );
-		this.groupchat = SelectorGroupChat(
-			runtime=this.runtime,
-			model_client=llm,
-			participants=this.members,
-			name=this.name,
-			custom_message_types=[StructuredMessage[AtName_Content]],
-			selector_func=lambda ms: this.history_speakers[this.hsi],
-			termination_condition=FunctionalTermination(this.termination_function)
-		);
-		if groupchat is not None:
-			state_groupchat = await groupchat.save_state();
-			state_groupchat["agent_states"].update((a.name,ChatAgentContainerState(agent_state=state)) for a,state in zip(agents, await asyncio.gather(*(a_.save_state() for a_ in agents))));
-			await this.groupchat.load_state(state_groupchat);
+	async def delete_member(this, agents):
+		this.members = [member for member in filter(lambda member: member._name!=agents[0].name, this.members)];
+		await this.update_groupchat(this.members);
 
-	def termination_function(this, response):
-		this.history_context.append(response[-1]);
-		if response[-1].source != "user":
-			for ats in [filter(lambda n: n != "", ktrings.split("@")) for ktrings in response[-1].content.model_dump().keys()]:
+	def termination_function(this, chatmessage: list[BaseAgentEvent | BaseChatMessage]):
+		this.history_context.append(chatmessage[-1].to_model_message());
+		if chatmessage[-1].source != "user":
+			for ats in [filter(lambda n: n != "", ktrings.split("@")) for ktrings in chatmessage[-1].content.model_dump().keys()]:
 				for at in ats: this.history_speakers.append(at);
 		this.hsi = this.hsi + 1;
 		while True:

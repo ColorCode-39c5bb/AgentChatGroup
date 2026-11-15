@@ -4,7 +4,9 @@ templatePromise.then((templateDocument)=>{
 	window.constructor_customelement.push(BoxChat);
 });
 export default function BoxChat(){
-	const _this = Reflect.construct(HTMLElement, [], BoxChat); _this.initShadowRoot(BoxChat);
+	const _this = Reflect.construct(HTMLElement, [], BoxChat);
+	_this.initShadowRoot(BoxChat);
+
 	const form = _this.shadowRoot.querySelector("form");
 	form.addEventListener("submit", function(e){
 		e.preventDefault();
@@ -14,30 +16,24 @@ export default function BoxChat(){
 		}));
 		Array.from(this.elements).forEach(el=>el.value = "");
 	});
-	_this.elements_todo={
-		form,
-	};
+
+	_this.elements_todo={};
 	return _this;
 }
 Object.setPrototypeOf(BoxChat.prototype, HTMLElement.prototype); Object.setPrototypeOf(BoxChat, HTMLElement);
 Object.defineProperty(BoxChat, "observedAttributes", {get: function() {return []}});
-BoxChat.prototype.connectedCallback = function(){
-}
-BoxChat.prototype.attributeChangedCallback = function(name, oldValue, newValue){
-}
-BoxChat.prototype.disconnectedCallback = function(){
-}
-BoxChat.prototype.adoptedCallback = function(){
-}
-//BoxChat.prototype.reactiverender = function(delta){
-//	const {}=this.elements_todo;  const rd=this.reactivedata.datavalue;
+BoxChat.prototype.connectedCallback = function(){}
+BoxChat.prototype.attributeChangedCallback = function(name, oldValue, newValue){}
+BoxChat.prototype.disconnectedCallback = function(){}
+BoxChat.prototype.adoptedCallback = function(){}
+//BoxChat.prototype.reactiverender = function(delta, value){
+//	const {}=this.elements_todo;
 //
 //}
 
 //BoxChat.RDCLASS = function(){
 //	this.construction = {
-//		mergemode: "mode_incremental", isprimary: false,
-//		
+//
 //	};
 //	return this;
 //}

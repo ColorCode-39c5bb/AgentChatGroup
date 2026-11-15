@@ -43,6 +43,7 @@
 			<dialog id="member-new" popover><form method="dialog">
 				<label>name <input type="text" name="name"></label>
 				<label>system_message <input type="text" name="system_message"></label>
+				<label>history <input type="checkbox" name="history"></label>
 				<div id="action">
 					<button value="Y" type="submit">创建</button>
 					<button value="N">取消</button>
@@ -95,7 +96,7 @@
 		padding: 10px;
 		margin: 10px 0;
 		border: var(--border-small);
-		
+
 		.message-content{
 			border: none;
 			padding: 0px;
@@ -134,7 +135,7 @@
 			padding: 5px;
 			border: var(--border-small);
 		}
-		
+
 		#label-list-member{
 			position: relative;
 			.fold-trigger{
@@ -160,7 +161,7 @@
 			border: var(--border-small);
 			padding: 5px;
 			height: 50px;
-			
+
 			agent-default.member-avatar{
 				display: inline-block;
 				height: 100%;
